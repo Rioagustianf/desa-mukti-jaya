@@ -1,4 +1,5 @@
 "use client";
+
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signIn } from "next-auth/react";
@@ -18,22 +19,18 @@ const schema = z.object({
 
 type Inputs = z.infer<typeof schema>;
 
-export default function LoginPage() {
+// Create a separate component that uses useSearchParams
+function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const [loading, setLoading] = useState(false);
-  const [callbackUrl, setCallbackUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Pastikan penggunaan params hanya dilakukan di sisi klien
-    setCallbackUrl(params.get("callbackUrl"));
-  }, [params]);
+  const callbackUrl = params.get("callbackUrl");
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<Inputs>({
+  } = useForm({
     resolver: zodResolver(schema),
   });
 
@@ -44,7 +41,6 @@ export default function LoginPage() {
       redirect: false,
     });
     setLoading(false);
-
     if (res?.error) {
       toast.error("Username atau password salah");
     } else {
@@ -53,47 +49,50 @@ export default function LoginPage() {
   }
 
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-center">Login Admin</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div>
-                <Input
-                  placeholder="Username"
-                  {...register("username")}
-                  autoFocus
-                  autoComplete="username"
-                />
-                {errors.username && (
-                  <p className="text-sm text-red-600 mt-1">
-                    {errors.username.message}
-                  </p>
-                )}
-              </div>
-              <div>
-                <Input
-                  placeholder="Password"
-                  type="password"
-                  {...register("password")}
-                  autoComplete="current-password"
-                />
-                {errors.password && (
-                  <p className="text-sm text-red-600 mt-1">
-                    {errors.password.message}
-                  </p>
-                )}
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Memproses..." : "Login"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <div className="space-y-2">
+        <Input type="text" placeholder="Username" {...register("username")} />
+        {errors.username && (
+          <p className="text-sm text-red-500">{errors.username.message}</p>
+        )}
       </div>
-    </Suspense>
+
+      <div className="space-y-2">
+        <Input
+          type="password"
+          placeholder="Password"
+          {...register("password")}
+        />
+        {errors.password && (
+          <p className="text-sm text-red-500">{errors.password.message}</p>
+        )}
+      </div>
+
+      <Button type="submit" className="w-full" disabled={loading}>
+        {loading ? "Memproses..." : "Login"}
+      </Button>
+    </form>
+  );
+}
+
+// Fallback for suspense
+function LoginFormFallback() {
+  return <div>Loading form...</div>;
+}
+
+export default function LoginPage() {
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gray-100">
+      <Card className="w-full max-w-md  mx-auto">
+        <CardHeader>
+          <CardTitle className="text-center">Login Admin</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Suspense fallback={<LoginFormFallback />}>
+            <LoginForm />
+          </Suspense>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
