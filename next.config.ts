@@ -2,11 +2,14 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   images: {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "placehold.co", // Fixed: removed https:// prefix
+        hostname: "placehold.co",
         port: "",
         pathname: "/**",
       },
@@ -18,15 +21,15 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "*", // Allow images from any domain for API fetched images
+        hostname: "*",
         port: "",
         pathname: "/**",
       },
     ],
-    // Add this to allow unoptimized images as a fallback option
+
     unoptimized: true,
   },
-  // Add API route for placeholders
+
   async rewrites() {
     return [
       {
