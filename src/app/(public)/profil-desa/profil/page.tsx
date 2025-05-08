@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { Separator } from "@/components/ui/separator";
 import {
   Card,
@@ -32,7 +32,6 @@ import { Button } from "@/components/ui/button";
 import { useLokasi } from "@/hooks/useLokasi";
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { useSearchParams } from "next/navigation";
 
 const MapComponent = dynamic(() => import("@/components/admin/map/Map"), {
   ssr: false,
@@ -124,6 +123,303 @@ const getYouTubeVideoId = (url: string): string | null => {
   return null;
 };
 
+// Komponen terpisah untuk Tabs yang menggunakan useSearchParams
+function TabsWithParams({
+  activeTab,
+  data,
+  sambutan,
+  isLoadingLokasi,
+  mapMarkers,
+  mapCenter,
+  mapZoom,
+  lokasi,
+  openInMaps,
+  youtubeVideoId,
+}) {
+  // Gunakan useSearchParams di dalam komponen yang dibungkus Suspense
+  const searchParams = useSearchParams();
+  const defaultTab = searchParams.get("tab") || "informasi";
+
+  return (
+    <Tabs defaultValue={defaultTab} className="mb-12">
+      <TabsList className="grid grid-cols-2 md:grid-cols-4 mb-8">
+        <TabsTrigger value="informasi">Informasi Umum</TabsTrigger>
+        <TabsTrigger value="sejarah">Sejarah</TabsTrigger>
+        <TabsTrigger value="visi-misi">Visi & Misi</TabsTrigger>
+        <TabsTrigger value="lokasi">Lokasi</TabsTrigger>
+      </TabsList>
+
+      {/* Informasi Umum Tab */}
+      <TabsContent value="informasi" className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="shadow-md">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-emerald-600" />
+                <CardTitle>Informasi Umum</CardTitle>
+              </div>
+              <CardDescription>
+                Data geografis dan administrasi desa
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex flex-col">
+                  <span className="text-sm text-muted-foreground">Alamat</span>
+                  <span className="font-medium">{data.alamat || "-"}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col">
+                    <span className="text-sm text-muted-foreground">
+                      Kecamatan
+                    </span>
+                    <span className="font-medium">{data.kecamatan || "-"}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm text-muted-foreground">
+                      Kabupaten
+                    </span>
+                    <span className="font-medium">{data.kabupaten || "-"}</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col">
+                    <span className="text-sm text-muted-foreground">
+                      Provinsi
+                    </span>
+                    <span className="font-medium">{data.provinsi || "-"}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm text-muted-foreground">
+                      Kode Pos
+                    </span>
+                    <span className="font-medium">{data.kode_pos || "-"}</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-md">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2">
+                <Phone className="h-5 w-5 text-emerald-600" />
+                <CardTitle>Kontak</CardTitle>
+              </div>
+              <CardDescription>
+                Informasi kontak dan media sosial
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <Phone className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div className="flex flex-col">
+                    <span className="text-sm text-muted-foreground">
+                      Telepon
+                    </span>
+                    <span className="font-medium">{data.telepon || "-"}</span>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Mail className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div className="flex flex-col">
+                    <span className="text-sm text-muted-foreground">Email</span>
+                    <span className="font-medium">{data.email || "-"}</span>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Globe className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div className="flex flex-col">
+                    <span className="text-sm text-muted-foreground">
+                      Website
+                    </span>
+                    <span className="font-medium">
+                      {data.website ? (
+                        <a
+                          href={`https://${data.website}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-emerald-600 hover:underline"
+                        >
+                          {data.website}
+                        </a>
+                      ) : (
+                        "-"
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </TabsContent>
+
+      {/* Sejarah Tab */}
+      <TabsContent value="sejarah">
+        <Card className="shadow-md">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <History className="h-5 w-5 text-emerald-600" />
+              <CardTitle>Sejarah Singkat Desa</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="prose max-w-none">
+              <p className="text-gray-700 whitespace-pre-line leading-relaxed">
+                {data.sejarahSingkat || "Belum ada data sejarah desa."}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      {/* Visi & Misi Tab */}
+      <TabsContent value="visi-misi">
+        <Card className="shadow-md">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Target className="h-5 w-5 text-emerald-600" />
+              <CardTitle>Visi & Misi</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-8">
+              <div>
+                <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                  <Badge
+                    variant="outline"
+                    className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                  >
+                    Visi
+                  </Badge>
+                  <Separator className="flex-1" />
+                </h3>
+                <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-100">
+                  <p className="text-gray-800 italic">
+                    "{data.visi || "Belum ada data visi."}"
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                  <Badge
+                    variant="outline"
+                    className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                  >
+                    Misi
+                  </Badge>
+                  <Separator className="flex-1" />
+                </h3>
+
+                {data.misi &&
+                Array.isArray(data.misi) &&
+                data.misi.length > 0 ? (
+                  <ol className="space-y-3 list-decimal pl-5">
+                    {data.misi.map((item, index) => (
+                      <li key={index} className="text-gray-700 pl-2">
+                        {item}
+                      </li>
+                    ))}
+                  </ol>
+                ) : data.misi && typeof data.misi === "string" ? (
+                  <p className="text-gray-700 whitespace-pre-line">
+                    {data.misi}
+                  </p>
+                ) : (
+                  <p className="text-gray-700">Belum ada data misi.</p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      {/* Lokasi Tab */}
+      <TabsContent value="lokasi">
+        <Card className="shadow-md">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Map className="h-5 w-5 text-emerald-600" />
+              <CardTitle>Lokasi Desa</CardTitle>
+            </div>
+            <CardDescription>Peta lokasi desa {data.nama}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoadingLokasi ? (
+              <div className="flex justify-center items-center h-64">
+                <div className="animate-pulse text-muted-foreground">
+                  Memuat data lokasi...
+                </div>
+              </div>
+            ) : Array.isArray(mapMarkers) && mapMarkers.length > 0 ? (
+              <div className="space-y-6">
+                <div className="h-[400px] w-full rounded-lg overflow-hidden">
+                  <MapComponent
+                    markers={mapMarkers}
+                    center={mapCenter}
+                    zoom={mapZoom}
+                  />
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Daftar Lokasi</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {Array.isArray(lokasi) &&
+                      lokasi.map((item) => (
+                        <Card key={item._id} className="overflow-hidden">
+                          <CardContent className="p-4">
+                            <h4 className="font-bold text-lg mb-2">
+                              {item.nama}
+                            </h4>
+                            <p className="text-sm text-muted-foreground mb-3">
+                              {item.alamat}
+                            </p>
+                            {item.deskripsi && (
+                              <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                                {item.deskripsi}
+                              </p>
+                            )}
+                            {item.koordinat && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-1"
+                                onClick={() =>
+                                  openInMaps(
+                                    item.koordinat?.lat,
+                                    item.koordinat?.lng
+                                  )
+                                }
+                              >
+                                <MapPin size={14} />
+                                <span>Lihat di Maps</span>
+                                <ExternalLink size={14} />
+                              </Button>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-64 text-center">
+                <Map className="h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground mb-2">
+                  Belum ada data lokasi yang ditambahkan
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
+  );
+}
+
 export default function ProfilDesaPage() {
   const [profilDesa, setProfilDesa] = useState<ProfilDesa | null>(null);
   const [sambutan, setSambutan] = useState<SambutanData | null>(null);
@@ -134,9 +430,7 @@ export default function ProfilDesaPage() {
     -7.123, 110.456,
   ]);
   const [mapZoom, setMapZoom] = useState(13);
-
-  const searchParams = useSearchParams();
-  const defaultTab = searchParams.get("tab") || "informasi";
+  const [activeTab, setActiveTab] = useState("informasi");
 
   // Fetch profile data
   useEffect(() => {
@@ -466,303 +760,23 @@ export default function ProfilDesaPage() {
             </Card>
           )}
 
-          {/* Tabs */}
-          <Tabs defaultValue={defaultTab} className="mb-12">
-            <TabsList className="grid grid-cols-2 md:grid-cols-4 mb-8">
-              <TabsTrigger value="informasi">Informasi Umum</TabsTrigger>
-              <TabsTrigger value="sejarah">Sejarah</TabsTrigger>
-              <TabsTrigger value="visi-misi">Visi & Misi</TabsTrigger>
-              <TabsTrigger value="lokasi">Lokasi</TabsTrigger>
-            </TabsList>
-
-            {/* Informasi Umum Tab */}
-            <TabsContent value="informasi" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="shadow-md">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-5 w-5 text-emerald-600" />
-                      <CardTitle>Informasi Umum</CardTitle>
-                    </div>
-                    <CardDescription>
-                      Data geografis dan administrasi desa
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex flex-col">
-                        <span className="text-sm text-muted-foreground">
-                          Alamat
-                        </span>
-                        <span className="font-medium">
-                          {data.alamat || "-"}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="flex flex-col">
-                          <span className="text-sm text-muted-foreground">
-                            Kecamatan
-                          </span>
-                          <span className="font-medium">
-                            {data.kecamatan || "-"}
-                          </span>
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-sm text-muted-foreground">
-                            Kabupaten
-                          </span>
-                          <span className="font-medium">
-                            {data.kabupaten || "-"}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="flex flex-col">
-                          <span className="text-sm text-muted-foreground">
-                            Provinsi
-                          </span>
-                          <span className="font-medium">
-                            {data.provinsi || "-"}
-                          </span>
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-sm text-muted-foreground">
-                            Kode Pos
-                          </span>
-                          <span className="font-medium">
-                            {data.kode_pos || "-"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="shadow-md">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-5 w-5 text-emerald-600" />
-                      <CardTitle>Kontak</CardTitle>
-                    </div>
-                    <CardDescription>
-                      Informasi kontak dan media sosial
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-start gap-3">
-                        <Phone className="h-5 w-5 text-muted-foreground mt-0.5" />
-                        <div className="flex flex-col">
-                          <span className="text-sm text-muted-foreground">
-                            Telepon
-                          </span>
-                          <span className="font-medium">
-                            {data.telepon || "-"}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <Mail className="h-5 w-5 text-muted-foreground mt-0.5" />
-                        <div className="flex flex-col">
-                          <span className="text-sm text-muted-foreground">
-                            Email
-                          </span>
-                          <span className="font-medium">
-                            {data.email || "-"}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <Globe className="h-5 w-5 text-muted-foreground mt-0.5" />
-                        <div className="flex flex-col">
-                          <span className="text-sm text-muted-foreground">
-                            Website
-                          </span>
-                          <span className="font-medium">
-                            {data.website ? (
-                              <a
-                                href={`https://${data.website}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-emerald-600 hover:underline"
-                              >
-                                {data.website}
-                              </a>
-                            ) : (
-                              "-"
-                            )}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-
-            {/* Sejarah Tab */}
-            <TabsContent value="sejarah">
-              <Card className="shadow-md">
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <History className="h-5 w-5 text-emerald-600" />
-                    <CardTitle>Sejarah Singkat Desa</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="prose max-w-none">
-                    <p className="text-gray-700 whitespace-pre-line leading-relaxed">
-                      {data.sejarahSingkat || "Belum ada data sejarah desa."}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Visi & Misi Tab */}
-            <TabsContent value="visi-misi">
-              <Card className="shadow-md">
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <Target className="h-5 w-5 text-emerald-600" />
-                    <CardTitle>Visi & Misi</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-8">
-                    <div>
-                      <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                        <Badge
-                          variant="outline"
-                          className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                        >
-                          Visi
-                        </Badge>
-                        <Separator className="flex-1" />
-                      </h3>
-                      <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-100">
-                        <p className="text-gray-800 italic">
-                          "{data.visi || "Belum ada data visi."}"
-                        </p>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                        <Badge
-                          variant="outline"
-                          className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                        >
-                          Misi
-                        </Badge>
-                        <Separator className="flex-1" />
-                      </h3>
-
-                      {data.misi &&
-                      Array.isArray(data.misi) &&
-                      data.misi.length > 0 ? (
-                        <ol className="space-y-3 list-decimal pl-5">
-                          {data.misi.map((item, index) => (
-                            <li key={index} className="text-gray-700 pl-2">
-                              {item}
-                            </li>
-                          ))}
-                        </ol>
-                      ) : data.misi && typeof data.misi === "string" ? (
-                        <p className="text-gray-700 whitespace-pre-line">
-                          {data.misi}
-                        </p>
-                      ) : (
-                        <p className="text-gray-700">Belum ada data misi.</p>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Lokasi Tab */}
-            <TabsContent value="lokasi">
-              <Card className="shadow-md">
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <Map className="h-5 w-5 text-emerald-600" />
-                    <CardTitle>Lokasi Desa Mukti Jaya</CardTitle>
-                  </div>
-                  <CardDescription>
-                    Peta lokasi desa {data.nama}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {isLoadingLokasi ? (
-                    <div className="flex justify-center items-center h-64">
-                      <div className="animate-pulse text-muted-foreground">
-                        Memuat data lokasi...
-                      </div>
-                    </div>
-                  ) : Array.isArray(mapMarkers) && mapMarkers.length > 0 ? (
-                    <div className="space-y-6">
-                      <div className="h-[400px] w-full rounded-lg overflow-hidden">
-                        <MapComponent
-                          markers={mapMarkers}
-                          center={mapCenter}
-                          zoom={mapZoom}
-                        />
-                      </div>
-
-                      <div className="space-y-4">
-                        <h3 className="text-lg font-semibold">Daftar Lokasi</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {Array.isArray(lokasi) &&
-                            lokasi.map((item) => (
-                              <Card key={item._id} className="overflow-hidden">
-                                <CardContent className="p-4">
-                                  <h4 className="font-bold text-lg mb-2">
-                                    {item.nama}
-                                  </h4>
-                                  <p className="text-sm text-muted-foreground mb-3">
-                                    {item.alamat}
-                                  </p>
-                                  {item.deskripsi && (
-                                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                                      {item.deskripsi}
-                                    </p>
-                                  )}
-                                  {item.koordinat && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="gap-1"
-                                      onClick={() =>
-                                        openInMaps(
-                                          item.koordinat?.lat,
-                                          item.koordinat?.lng
-                                        )
-                                      }
-                                    >
-                                      <MapPin size={14} />
-                                      <span>Lihat di Maps</span>
-                                      <ExternalLink size={14} />
-                                    </Button>
-                                  )}
-                                </CardContent>
-                              </Card>
-                            ))}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-64 text-center">
-                      <Map className="h-12 w-12 text-muted-foreground mb-4" />
-                      <p className="text-muted-foreground mb-2">
-                        Belum ada data lokasi yang ditambahkan
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+          {/* Tabs dengan Suspense */}
+          <Suspense
+            fallback={<div className="p-4 text-center">Memuat tabs...</div>}
+          >
+            <TabsWithParams
+              activeTab={activeTab}
+              data={data}
+              sambutan={sambutan}
+              isLoadingLokasi={isLoadingLokasi}
+              mapMarkers={mapMarkers}
+              mapCenter={mapCenter}
+              mapZoom={mapZoom}
+              lokasi={lokasi}
+              openInMaps={openInMaps}
+              youtubeVideoId={youtubeVideoId}
+            />
+          </Suspense>
         </div>
       </div>
     </div>
