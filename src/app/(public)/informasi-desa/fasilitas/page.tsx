@@ -53,7 +53,7 @@ export default function FasilitasWargaPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
       {/* Hero Section */}
-      <div className="bg-gradient-to-r  text-white">
+      <div className="bg-gradient-to-r from-sky-600 to-sky-900  text-white">
         <div className="container mx-auto px-4 py-12 md:py-20">
           <div className="w-full max-w-5xl mx-auto">
             <div className="flex flex-col items-center text-center">

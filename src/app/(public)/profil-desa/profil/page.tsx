@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import { useLokasi } from "@/hooks/useLokasi";
 import Image from "next/image";
 import dynamic from "next/dynamic";
+import { useSearchParams } from "next/navigation";
 
 const MapComponent = dynamic(() => import("@/components/admin/map/Map"), {
   ssr: false,
@@ -136,7 +137,6 @@ function TabsWithParams({
   openInMaps,
   youtubeVideoId,
 }) {
-  // Gunakan useSearchParams di dalam komponen yang dibungkus Suspense
   const searchParams = useSearchParams();
   const defaultTab = searchParams.get("tab") || "informasi";
 
