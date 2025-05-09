@@ -12,6 +12,7 @@ import {
   Users,
   Phone,
   Megaphone,
+  Users2,
 } from "lucide-react";
 
 // Pengelompokan menu sesuai SRS dan usecase diagram
@@ -60,6 +61,11 @@ export const navMain = [
         url: "/admin/kontak",
         icon: Phone,
       },
+      {
+        title: "Kelola Admin",
+        url: "/admin/users",
+        icon: Users2,
+      },
     ],
   },
   {
@@ -75,11 +81,6 @@ export const navMain = [
         title: "Galeri Kegiatan",
         url: "/admin/galeri",
         icon: ImageIcon,
-      },
-      {
-        title: "Pengumuman",
-        url: "/admin/pengumuman",
-        icon: Megaphone,
       },
     ],
   },

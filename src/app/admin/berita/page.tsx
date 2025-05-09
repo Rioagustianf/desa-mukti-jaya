@@ -21,7 +21,7 @@ import {
   DialogTitle,
   DialogFooter,
   DialogDescription,
-} from "@/components/ui/dialog";
+} from "@/components/ui/dialog-scrollable";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,7 +31,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@/components/ui/alert-dialog-scrollable";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -591,7 +591,7 @@ export default function AdminBeritaAgendaPage() {
 
       {/* Form Dialog - Conditionally render based on selectedType */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           {selectedType === "berita" ? (
             <form
               onSubmit={handleSubmitBerita(onSubmitBerita)}

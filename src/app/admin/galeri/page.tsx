@@ -1,5 +1,7 @@
 "use client";
 import { useState, useRef } from "react";
+import type React from "react";
+
 import { useGaleri } from "@/hooks/useGaleri";
 import {
   Card,
@@ -11,7 +13,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -506,7 +507,7 @@ export default function AdminGaleriPage() {
 
       {/* Form Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <DialogHeader>
               <DialogTitle>{edit ? "Edit Foto" : "Tambah Foto"}</DialogTitle>
@@ -629,7 +630,7 @@ export default function AdminGaleriPage() {
 
       {/* Image Preview Dialog */}
       <Dialog open={!!viewImage} onOpenChange={() => setViewImage(null)}>
-        <DialogContent className="sm:max-w-[800px] p-0 overflow-hidden">
+        <DialogContent className="sm:max-w-[800px] p-0 overflow-hidden max-h-[80vh]">
           <div className="relative h-[500px] w-full">
             {viewImage && (
               <NextImage

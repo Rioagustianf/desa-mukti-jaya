@@ -1,6 +1,8 @@
 "use client";
 import { useState, useRef } from "react";
-import { usePengurus, Pengurus } from "@/hooks/usePengurus";
+import type React from "react";
+
+import { usePengurus, type Pengurus } from "@/hooks/usePengurus";
 import {
   Card,
   CardHeader,
@@ -543,7 +545,7 @@ export default function AdminPengurusPage() {
 
       {/* Form Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <DialogHeader>
               <DialogTitle>

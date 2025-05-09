@@ -20,8 +20,8 @@ export default function Footer() {
               <span className="font-bold">Desa Mukti Jaya</span>
             </div>
             <p className="text-gray-400 text-sm">
-              Jalan Raya Desa No. 123, Kecamatan Tanjung, Kabupaten Sejahtera,
-              12345
+              Desa Mukti Jaya Jalur 10, Kecamatan Muara Telang, Kabupaten
+              Banyuasin
             </p>
             <div className="mt-4 text-sm text-gray-400">
               <p>info@desamuktijaya.com</p>

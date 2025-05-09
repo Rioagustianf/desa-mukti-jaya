@@ -1,5 +1,7 @@
 "use client";
 import { useState, useRef } from "react";
+import type React from "react";
+
 import {
   useSejarah,
   type SejarahData,
@@ -24,7 +26,7 @@ import {
   DialogTitle,
   DialogFooter,
   DialogDescription,
-} from "@/components/ui/dialog";
+} from "@/components/ui/dialog-scrollable";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,7 +36,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@/components/ui/alert-dialog-scrollable";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,7 +52,6 @@ import {
   Search,
   Trash2,
   Upload,
-  Image,
   Loader2,
   X,
 } from "lucide-react";
@@ -302,7 +303,7 @@ export default function AdminSejarahPage() {
                   {filteredSejarah
                     .sort(
                       (a: SejarahData, b: SejarahData) =>
-                        parseInt(a.tahun) - parseInt(b.tahun)
+                        Number.parseInt(a.tahun) - Number.parseInt(b.tahun)
                     )
                     .map((item: SejarahData) => (
                       <Card key={item._id} className="overflow-hidden border">
@@ -441,7 +442,7 @@ export default function AdminSejarahPage() {
                   {filteredSejarah
                     .sort(
                       (a: SejarahData, b: SejarahData) =>
-                        parseInt(a.tahun) - parseInt(b.tahun)
+                        Number.parseInt(a.tahun) - Number.parseInt(b.tahun)
                     )
                     .map((item: SejarahData, index: number) => (
                       <div key={item._id} className="relative">

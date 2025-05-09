@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useLayanan, LayananItem } from "@/hooks/useLayanan";
+import { useLayanan, type LayananItem } from "@/hooks/useLayanan";
 import {
   Card,
   CardHeader,
@@ -19,7 +19,7 @@ import {
   DialogTitle,
   DialogFooter,
   DialogDescription,
-} from "@/components/ui/dialog";
+} from "@/components/ui/dialog-scrollable";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,7 +29,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@/components/ui/alert-dialog-scrollable";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,13 +64,15 @@ type FormValues = z.infer<typeof schema>;
 
 export default function AdminLayananPage() {
   const {
-    layanan,
+    layanan = [], // Provide default empty array to prevent undefined errors
     isLoading,
     isError,
+    error,
     createLayanan,
     deleteLayanan,
     updateLayanan,
   } = useLayanan();
+
   const [open, setOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -159,17 +161,20 @@ export default function AdminLayananPage() {
     }
   }
 
-  const filteredLayanan = layanan?.filter(
-    (item: LayananItem) =>
-      item.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.deskripsi.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Safely filter layanan with null check
+  const filteredLayanan =
+    layanan?.filter(
+      (item: LayananItem) =>
+        item.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.deskripsi.toLowerCase().includes(searchQuery.toLowerCase())
+    ) || [];
 
   if (isError) {
     return (
       <div className="flex justify-center items-center h-40">
         <div className="text-destructive">
-          Terjadi kesalahan saat memuat data. Silakan coba lagi nanti.
+          Terjadi kesalahan saat memuat data:{" "}
+          {error?.message || "Silakan coba lagi nanti."}
         </div>
       </div>
     );
