@@ -34,6 +34,8 @@ import {
   FileImage,
   AlertTriangle,
   Clock,
+  RefreshCw,
+  Search,
 } from "lucide-react";
 import { createPengajuanSurat } from "./actions";
 import { getUserPengajuan } from "./actions";
@@ -113,6 +115,10 @@ export default function PengajuanSuratPage() {
   const [view, setView] = useState<"form" | "status">("form");
   const [userPengajuan, setUserPengajuan] = useState<any[]>([]);
   const [isLoadingPengajuan, setIsLoadingPengajuan] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [searchNik, setSearchNik] = useState("");
+  const [searchTelepon, setSearchTelepon] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
   const router = useRouter();
 
   // State untuk file uploads
@@ -131,6 +137,7 @@ export default function PengajuanSuratPage() {
     setValue,
     watch,
     reset,
+    getValues,
   } = useForm<FormValues>({
     resolver: zodResolver(pengajuanSchema),
     defaultValues: {
@@ -141,25 +148,40 @@ export default function PengajuanSuratPage() {
 
   const jenisSurat = watch("jenisSurat");
   const dokumen = watch("dokumen");
+  const nik = watch("nik");
+  const teleponWA = watch("teleponWA");
 
   // Fetch user pengajuan
-  useEffect(() => {
-    const fetchUserPengajuan = async () => {
-      setIsLoadingPengajuan(true);
-      try {
-        const result = await getUserPengajuan();
-        if (result.success) {
-          setUserPengajuan(result.data);
-        } else {
-          console.error("Failed to fetch user pengajuan:", result.message);
-        }
-      } catch (error) {
-        console.error("Error fetching user pengajuan:", error);
-      } finally {
-        setIsLoadingPengajuan(false);
-      }
-    };
+  const fetchUserPengajuan = async (identifiers?: {
+    nik?: string;
+    teleponWA?: string;
+  }) => {
+    setIsLoadingPengajuan(true);
+    setError(null);
+    setIsSearching(!!identifiers);
 
+    try {
+      const result = await getUserPengajuan(identifiers);
+      if (result.success) {
+        setUserPengajuan(result.data);
+
+        if (result.data.length === 0 && identifiers) {
+          toast.info("Tidak ditemukan pengajuan dengan data tersebut");
+        }
+      } else {
+        console.error("Failed to fetch user pengajuan:", result.message);
+        setError(result.message || "Gagal mengambil data pengajuan");
+      }
+    } catch (error) {
+      console.error("Error fetching user pengajuan:", error);
+      setError("Terjadi kesalahan saat mengambil data pengajuan");
+    } finally {
+      setIsLoadingPengajuan(false);
+      setIsSearching(false);
+    }
+  };
+
+  useEffect(() => {
     if (view === "status") {
       fetchUserPengajuan();
     }
@@ -169,6 +191,26 @@ export default function PengajuanSuratPage() {
   const handleTabChange = (value: string) => {
     setActiveTab(value as "domisili" | "pindah");
     setValue("jenisSurat", value as "domisili" | "pindah");
+  };
+
+  // Handle search
+  const handleSearch = () => {
+    const identifiers: { nik?: string; teleponWA?: string } = {};
+
+    if (searchNik.trim()) {
+      identifiers.nik = searchNik.trim();
+    }
+
+    if (searchTelepon.trim()) {
+      identifiers.teleponWA = searchTelepon.trim();
+    }
+
+    if (Object.keys(identifiers).length === 0) {
+      toast.error("Masukkan NIK atau nomor telepon untuk mencari");
+      return;
+    }
+
+    fetchUserPengajuan(identifiers);
   };
 
   // Handle file upload
@@ -388,24 +430,33 @@ export default function PengajuanSuratPage() {
                   Silakan cek status pengajuan Anda secara berkala. Kami akan
                   menghubungi Anda melalui WhatsApp yang telah diberikan.
                 </p>
+                <div className="bg-blue-50 border border-blue-200 rounded-md p-4 text-blue-800 text-sm mb-6">
+                  <p className="font-medium mb-2">Informasi Penting:</p>
+                  <p>
+                    Untuk melihat status pengajuan, silakan gunakan NIK{" "}
+                    <strong>{nik}</strong> atau nomor telepon{" "}
+                    <strong>{teleponWA}</strong> pada halaman Status Pengajuan.
+                  </p>
+                </div>
               </CardContent>
               <CardFooter className="flex justify-center gap-4 pt-2">
-                <Button
-                  onClick={() => router.push("/layanan-administrasi/informasi")}
-                >
+                <Button onClick={() => router.push("/layanan-administrasi")}>
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Kembali ke Layanan
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => {
-                    setIsSuccess(false);
-                    setActiveTab("domisili");
-                    setValue("jenisSurat", "domisili");
+                    setView("status");
+                    setSearchNik(nik || "");
+                    setSearchTelepon(teleponWA || "");
+                    setTimeout(() => {
+                      handleSearch();
+                    }, 500);
                   }}
                 >
-                  <FileText className="mr-2 h-4 w-4" />
-                  Buat Pengajuan Baru
+                  <FileCheck className="mr-2 h-4 w-4" />
+                  Lihat Status
                 </Button>
               </CardFooter>
             </Card>
@@ -959,9 +1010,7 @@ export default function PengajuanSuratPage() {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() =>
-                        router.push("/layanan-administrasi/informasi")
-                      }
+                      onClick={() => router.push("/layanan-administrasi")}
                     >
                       <ArrowLeft className="mr-2 h-4 w-4" />
                       Kembali
@@ -983,26 +1032,112 @@ export default function PengajuanSuratPage() {
             </Card>
           ) : (
             <Card className="shadow-md mb-8">
-              <CardHeader>
-                <CardTitle>Status Pengajuan Surat</CardTitle>
-                <CardDescription>
-                  Lihat status pengajuan surat yang telah Anda ajukan
-                </CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Status Pengajuan Surat</CardTitle>
+                  <CardDescription>
+                    Lihat status pengajuan surat yang telah Anda ajukan
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchUserPengajuan()}
+                  disabled={isLoadingPengajuan}
+                >
+                  <RefreshCw
+                    className={`h-4 w-4 mr-2 ${
+                      isLoadingPengajuan ? "animate-spin" : ""
+                    }`}
+                  />
+                  Refresh
+                </Button>
               </CardHeader>
               <CardContent>
+                <div className="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                  <h3 className="text-sm font-medium mb-3">
+                    Cari Pengajuan Anda
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <Label htmlFor="searchNik" className="text-sm">
+                        NIK
+                      </Label>
+                      <div className="relative mt-1">
+                        <Input
+                          id="searchNik"
+                          placeholder="Masukkan NIK"
+                          value={searchNik}
+                          onChange={(e) => setSearchNik(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="searchTelepon" className="text-sm">
+                        Nomor Telepon
+                      </Label>
+                      <div className="relative mt-1">
+                        <Input
+                          id="searchTelepon"
+                          placeholder="Masukkan nomor telepon"
+                          value={searchTelepon}
+                          onChange={(e) => setSearchTelepon(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleSearch}
+                    disabled={isSearching || (!searchNik && !searchTelepon)}
+                    className="w-full"
+                  >
+                    {isSearching ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Mencari...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="mr-2 h-4 w-4" />
+                        Cari Pengajuan
+                      </>
+                    )}
+                  </Button>
+                </div>
+
                 {isLoadingPengajuan ? (
                   <div className="flex justify-center items-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-8 w-8 animate-spin" />
+                      <p>Memuat data pengajuan...</p>
+                    </div>
+                  </div>
+                ) : error ? (
+                  <div className="flex flex-col items-center justify-center py-8">
+                    <AlertTriangle className="h-12 w-12 text-amber-500 mb-4" />
+                    <h3 className="text-lg font-medium mb-2">
+                      Terjadi Kesalahan
+                    </h3>
+                    <p className="text-muted-foreground text-center mb-6">
+                      {error}
+                    </p>
+                    <Button onClick={() => fetchUserPengajuan()}>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Coba Lagi
+                    </Button>
                   </div>
                 ) : userPengajuan.length === 0 ? (
                   <div className="text-center py-12">
                     <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                     <h3 className="text-lg font-medium mb-2">
-                      Belum ada pengajuan
+                      {isSearching
+                        ? "Tidak ditemukan pengajuan"
+                        : "Belum ada pengajuan"}
                     </h3>
                     <p className="text-muted-foreground mb-6">
-                      Anda belum mengajukan surat administrasi apapun. Silakan
-                      buat pengajuan baru.
+                      {isSearching
+                        ? "Tidak ditemukan pengajuan dengan data yang Anda masukkan. Pastikan NIK atau nomor telepon sudah benar."
+                        : "Anda belum mengajukan surat administrasi apapun. Silakan buat pengajuan baru."}
                     </p>
                     <Button onClick={() => setView("form")}>
                       <FileText className="mr-2 h-4 w-4" />

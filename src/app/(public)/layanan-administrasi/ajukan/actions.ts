@@ -1,11 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
 import dbConnect from "@/lib/db";
 import PengajuanSurat from "@/lib/models/PengajuanSurat";
 
-// Perbaiki fungsi createPengajuanSurat untuk mengkonversi objek Mongoose menjadi plain object
 export async function createPengajuanSurat(data: any) {
   try {
     await dbConnect();
@@ -20,25 +18,10 @@ export async function createPengajuanSurat(data: any) {
     // Simpan ke database
     const pengajuan = await PengajuanSurat.create(pengajuanData);
 
-    // Simpan ID pengajuan di cookie untuk tracking
-    const cookieStore = cookies();
-    const existingPengajuan = cookieStore.get("pengajuan_ids")?.value;
-    const pengajuanIds = existingPengajuan ? JSON.parse(existingPengajuan) : [];
-
-    if (!pengajuanIds.includes(pengajuan._id.toString())) {
-      pengajuanIds.push(pengajuan._id.toString());
-    }
-
-    cookieStore.set("pengajuan_ids", JSON.stringify(pengajuanIds), {
-      maxAge: 60 * 60 * 24 * 30, // 30 days
-      path: "/",
-    });
-
     // Revalidasi path untuk memperbarui data
     revalidatePath("/layanan-administrasi/ajukan");
     revalidatePath("/admin/pengajuan-surat");
 
-    // Konversi objek Mongoose menjadi plain object sebelum mengembalikannya
     return {
       success: true,
       data: JSON.parse(JSON.stringify(pengajuan)),
@@ -52,52 +35,56 @@ export async function createPengajuanSurat(data: any) {
   }
 }
 
-// Perbaiki fungsi getUserPengajuan untuk mengkonversi objek Mongoose menjadi plain object
-export async function getUserPengajuan() {
+export async function getUserPengajuan(identifiers?: {
+  nik?: string;
+  teleponWA?: string;
+}) {
   try {
     await dbConnect();
 
-    // Ambil ID pengajuan dari cookie
-    const cookieStore = cookies();
-    const pengajuanIds = cookieStore.get("pengajuan_ids")?.value;
+    // Buat filter berdasarkan NIK atau telepon WA jika ada
+    let filter = {};
 
-    if (!pengajuanIds) {
-      return {
-        success: true,
-        data: [],
-      };
+    if (identifiers) {
+      const conditions = [];
+
+      if (identifiers.nik) {
+        conditions.push({ nik: identifiers.nik });
+      }
+
+      if (identifiers.teleponWA) {
+        conditions.push({ teleponWA: identifiers.teleponWA });
+      }
+
+      if (conditions.length > 0) {
+        filter = { $or: conditions };
+      }
     }
 
-    const ids = JSON.parse(pengajuanIds);
+    console.log("Mencari pengajuan dengan filter:", filter);
 
-    if (!ids.length) {
-      return {
-        success: true,
-        data: [],
-      };
-    }
-
-    // Ambil data pengajuan berdasarkan ID
-    const pengajuan = await PengajuanSurat.find({
-      _id: { $in: ids },
-    })
+    // Ambil data pengajuan terbaru (maksimal 20)
+    const pengajuan = await PengajuanSurat.find(filter)
       .sort({ createdAt: -1 })
-      .lean(); // Gunakan .lean() untuk mendapatkan plain JavaScript objects
+      .limit(20)
+      .lean();
+
+    console.log("Hasil query pengajuan:", pengajuan.length);
 
     return {
       success: true,
-      data: JSON.parse(JSON.stringify(pengajuan)), // Pastikan data benar-benar menjadi plain object
+      data: JSON.parse(JSON.stringify(pengajuan)),
     };
   } catch (error) {
     console.error("Error fetching user pengajuan:", error);
     return {
       success: false,
       message: "Gagal mengambil data pengajuan",
+      error: error instanceof Error ? error.message : String(error),
     };
   }
 }
 
-// Perbaiki fungsi updateStatusPengajuan untuk mengkonversi objek Mongoose menjadi plain object
 export async function updateStatusPengajuan(
   id: string,
   status: string,
@@ -115,7 +102,7 @@ export async function updateStatusPengajuan(
         tanggalUpdate: new Date(),
       },
       { new: true }
-    ).lean(); // Gunakan .lean() untuk mendapatkan plain JavaScript objects
+    ).lean();
 
     if (!pengajuan) {
       return {
@@ -124,12 +111,12 @@ export async function updateStatusPengajuan(
       };
     }
 
-    // Revalidasi path untuk memperbarui data
     revalidatePath("/admin/pengajuan-surat");
+    revalidatePath("/layanan-administrasi/ajukan");
 
     return {
       success: true,
-      data: JSON.parse(JSON.stringify(pengajuan)), // Pastikan data benar-benar menjadi plain object
+      data: JSON.parse(JSON.stringify(pengajuan)),
     };
   } catch (error) {
     console.error("Error updating pengajuan status:", error);
