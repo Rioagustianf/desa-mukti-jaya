@@ -14,6 +14,8 @@ import {
   Megaphone,
   Users2,
   Mail,
+  MailPlus,
+  MailPlusIcon,
 } from "lucide-react";
 
 // Pengelompokan menu sesuai SRS dan usecase diagram
@@ -98,6 +100,11 @@ export const navMain = [
         title: "Pengajuan Surat",
         url: "/admin/pengajuan-surat",
         icon: Mail,
+      },
+      {
+        title: "Tambah Jenis Surat",
+        url: "/admin/jenis-surat",
+        icon: MailPlusIcon,
       },
       {
         title: "Panduan/Syarat Administrasi",

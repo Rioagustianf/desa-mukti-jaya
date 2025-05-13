@@ -18,7 +18,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Loader2,
   FileText,
@@ -36,82 +35,104 @@ import {
   Clock,
   RefreshCw,
   Search,
+  FileQuestion,
 } from "lucide-react";
-import { createPengajuanSurat } from "./actions";
-import { getUserPengajuan } from "./actions";
+import {
+  createPengajuanSurat,
+  getJenisSurat,
+  getUserPengajuan,
+} from "./actions";
 import Image from "next/image";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-// Schema untuk validasi form
-const pengajuanSchema = z
-  .object({
-    jenisSurat: z.enum(["domisili", "pindah"]),
+// Schema untuk validasi form umum
+const pengajuanUmumSchema = z.object({
+  jenisSuratId: z.string().min(1, "Jenis surat wajib dipilih"),
+  nama: z.string().min(3, "Nama lengkap minimal 3 karakter"),
+  nik: z.string().min(16, "NIK harus 16 digit").max(16, "NIK harus 16 digit"),
+  teleponWA: z.string().min(10, "Nomor telepon WA minimal 10 digit"),
+  dokumen: z.array(z.string()).min(1, "Minimal satu dokumen wajib diupload"),
+});
 
-    // Data pemohon (disederhanakan)
-    nama: z.string().min(3, "Nama lengkap minimal 3 karakter"),
-    nik: z.string().min(16, "NIK harus 16 digit").max(16, "NIK harus 16 digit"),
-    tempatLahir: z.string().min(3, "Tempat lahir wajib diisi"),
-    tanggalLahir: z.string().min(1, "Tanggal lahir wajib diisi"),
+// Schema untuk validasi form domisili
+const pengajuanDomisiliSchema = z.object({
+  jenisSuratId: z.string().min(1, "Jenis surat wajib dipilih"),
 
-    // Alamat (disederhanakan)
-    alamat: z.string().min(5, "Alamat wajib diisi minimal 5 karakter"),
-    rt: z.string().min(1, "RT wajib diisi"),
-    rw: z.string().min(1, "RW wajib diisi"),
-    desa: z.string().min(1, "Desa wajib diisi"),
-    kecamatan: z.string().min(1, "Kecamatan wajib diisi"),
-    kabupaten: z.string().min(1, "Kabupaten wajib diisi"),
+  // Data pemohon
+  nama: z.string().min(3, "Nama lengkap minimal 3 karakter"),
+  nik: z.string().min(16, "NIK harus 16 digit").max(16, "NIK harus 16 digit"),
+  tempatLahir: z.string().min(3, "Tempat lahir wajib diisi"),
+  tanggalLahir: z.string().min(1, "Tanggal lahir wajib diisi"),
 
-    // Kontak (disederhanakan)
-    teleponWA: z.string().min(10, "Nomor telepon WA minimal 10 digit"),
+  // Alamat
+  alamat: z.string().min(5, "Alamat wajib diisi minimal 5 karakter"),
+  rt: z.string().min(1, "RT wajib diisi"),
+  rw: z.string().min(1, "RW wajib diisi"),
+  desa: z.string().min(1, "Desa wajib diisi"),
+  kecamatan: z.string().min(1, "Kecamatan wajib diisi"),
+  kabupaten: z.string().min(1, "Kabupaten wajib diisi"),
 
-    // Keperluan
-    keperluan: z.string().min(10, "Keperluan wajib diisi minimal 10 karakter"),
+  // Kontak
+  teleponWA: z.string().min(10, "Nomor telepon WA minimal 10 digit"),
 
-    // File uploads - diubah menjadi array string
-    dokumen: z.array(z.string()).min(3, "Semua dokumen wajib diupload"),
+  // Keperluan
+  keperluan: z.string().min(10, "Keperluan wajib diisi minimal 10 karakter"),
 
-    // Khusus untuk surat pindah
-    alamatTujuan: z.string().optional(),
-    rtTujuan: z.string().optional(),
-    rwTujuan: z.string().optional(),
-    desaTujuan: z.string().optional(),
-    kecamatanTujuan: z.string().optional(),
-    kabupatenTujuan: z.string().optional(),
-    alasanPindah: z.string().optional(),
-  })
-  .refine(
-    (data) => {
-      // Jika jenis surat adalah pindah, maka field tujuan harus diisi
-      if (data.jenisSurat === "pindah") {
-        return (
-          !!data.alamatTujuan &&
-          !!data.rtTujuan &&
-          !!data.rwTujuan &&
-          !!data.desaTujuan &&
-          !!data.kecamatanTujuan &&
-          !!data.kabupatenTujuan &&
-          !!data.alasanPindah
-        );
-      }
-      return true;
-    },
-    {
-      message:
-        "Data alamat tujuan dan alasan pindah wajib diisi untuk surat pindah",
-      path: ["alamatTujuan"],
-    }
-  );
+  // File uploads
+  dokumen: z.array(z.string()).min(3, "Semua dokumen wajib diupload"),
+});
 
-type FormValues = z.infer<typeof pengajuanSchema>;
+// Schema untuk validasi form pindah
+const pengajuanPindahSchema = z.object({
+  jenisSuratId: z.string().min(1, "Jenis surat wajib dipilih"),
+
+  // Data pemohon
+  nama: z.string().min(3, "Nama lengkap minimal 3 karakter"),
+  nik: z.string().min(16, "NIK harus 16 digit").max(16, "NIK harus 16 digit"),
+  tempatLahir: z.string().min(3, "Tempat lahir wajib diisi"),
+  tanggalLahir: z.string().min(1, "Tanggal lahir wajib diisi"),
+
+  // Alamat
+  alamat: z.string().min(5, "Alamat wajib diisi minimal 5 karakter"),
+  rt: z.string().min(1, "RT wajib diisi"),
+  rw: z.string().min(1, "RW wajib diisi"),
+  desa: z.string().min(1, "Desa wajib diisi"),
+  kecamatan: z.string().min(1, "Kecamatan wajib diisi"),
+  kabupaten: z.string().min(1, "Kabupaten wajib diisi"),
+
+  // Kontak
+  teleponWA: z.string().min(10, "Nomor telepon WA minimal 10 digit"),
+
+  // Keperluan
+  keperluan: z.string().min(10, "Keperluan wajib diisi minimal 10 karakter"),
+
+  // Khusus untuk surat pindah
+  alamatTujuan: z.string().min(5, "Alamat tujuan wajib diisi"),
+  rtTujuan: z.string().min(1, "RT tujuan wajib diisi"),
+  rwTujuan: z.string().min(1, "RW tujuan wajib diisi"),
+  desaTujuan: z.string().min(1, "Desa tujuan wajib diisi"),
+  kecamatanTujuan: z.string().min(1, "Kecamatan tujuan wajib diisi"),
+  kabupatenTujuan: z.string().min(1, "Kabupaten tujuan wajib diisi"),
+  alasanPindah: z.string().min(10, "Alasan pindah wajib diisi"),
+
+  // File uploads
+  dokumen: z.array(z.string()).min(3, "Semua dokumen wajib diupload"),
+});
 
 export default function PengajuanSuratPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [activeTab, setActiveTab] = useState<"domisili" | "pindah">("domisili");
   const [view, setView] = useState<"form" | "status">("form");
   const [userPengajuan, setUserPengajuan] = useState<any[]>([]);
   const [isLoadingPengajuan, setIsLoadingPengajuan] = useState(false);
@@ -119,6 +140,12 @@ export default function PengajuanSuratPage() {
   const [searchNik, setSearchNik] = useState("");
   const [searchTelepon, setSearchTelepon] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [jenisSuratList, setJenisSuratList] = useState<any[]>([]);
+  const [isLoadingJenisSurat, setIsLoadingJenisSurat] = useState(false);
+  const [selectedJenisSurat, setSelectedJenisSurat] = useState<any>(null);
+  const [formType, setFormType] = useState<"umum" | "domisili" | "pindah">(
+    "umum"
+  );
   const router = useRouter();
 
   // State untuk file uploads
@@ -130,26 +157,83 @@ export default function PengajuanSuratPage() {
   // Ref untuk file input
   const dokumenInputRef = useRef<HTMLInputElement>(null);
 
+  // Form untuk jenis surat umum
   const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    setValue,
-    watch,
-    reset,
-    getValues,
-  } = useForm<FormValues>({
-    resolver: zodResolver(pengajuanSchema),
+    register: registerUmum,
+    handleSubmit: handleSubmitUmum,
+    formState: { errors: errorsUmum },
+    setValue: setValueUmum,
+    watch: watchUmum,
+    reset: resetUmum,
+  } = useForm<z.infer<typeof pengajuanUmumSchema>>({
+    resolver: zodResolver(pengajuanUmumSchema),
     defaultValues: {
-      jenisSurat: "domisili",
       dokumen: [],
     },
   });
 
-  const jenisSurat = watch("jenisSurat");
-  const dokumen = watch("dokumen");
-  const nik = watch("nik");
-  const teleponWA = watch("teleponWA");
+  // Form untuk jenis surat domisili
+  const {
+    register: registerDomisili,
+    handleSubmit: handleSubmitDomisili,
+    formState: { errors: errorsDomisili },
+    setValue: setValueDomisili,
+    watch: watchDomisili,
+    reset: resetDomisili,
+  } = useForm<z.infer<typeof pengajuanDomisiliSchema>>({
+    resolver: zodResolver(pengajuanDomisiliSchema),
+    defaultValues: {
+      dokumen: [],
+    },
+  });
+
+  // Form untuk jenis surat pindah
+  const {
+    register: registerPindah,
+    handleSubmit: handleSubmitPindah,
+    formState: { errors: errorsPindah },
+    setValue: setValuePindah,
+    watch: watchPindah,
+    reset: resetPindah,
+  } = useForm<z.infer<typeof pengajuanPindahSchema>>({
+    resolver: zodResolver(pengajuanPindahSchema),
+    defaultValues: {
+      dokumen: [],
+    },
+  });
+
+  const dokumenUmum = watchUmum("dokumen");
+  const dokumenDomisili = watchDomisili("dokumen");
+  const dokumenPindah = watchPindah("dokumen");
+  const nikUmum = watchUmum("nik");
+  const teleponWAUmum = watchUmum("teleponWA");
+  const nikDomisili = watchDomisili("nik");
+  const teleponWADomisili = watchDomisili("teleponWA");
+  const nikPindah = watchPindah("nik");
+  const teleponWAPindah = watchPindah("teleponWA");
+
+  // Fetch jenis surat
+  useEffect(() => {
+    const fetchJenisSurat = async () => {
+      setIsLoadingJenisSurat(true);
+      try {
+        const result = await getJenisSurat();
+        if (result.success) {
+          setJenisSuratList(result.data);
+        } else {
+          console.error("Failed to fetch jenis surat:", result.message);
+          toast.error("Gagal mengambil data jenis surat");
+        }
+      } catch (error) {
+        console.error("Error fetching jenis surat:", error);
+        toast.error("Terjadi kesalahan saat mengambil data jenis surat");
+      } finally {
+        setIsLoadingJenisSurat(false);
+      }
+    };
+
+    fetchJenisSurat();
+  }, []);
 
   // Fetch user pengajuan
   const fetchUserPengajuan = async (identifiers?: {
@@ -187,10 +271,19 @@ export default function PengajuanSuratPage() {
     }
   }, [view]);
 
-  // Handle tab change
-  const handleTabChange = (value: string) => {
-    setActiveTab(value as "domisili" | "pindah");
-    setValue("jenisSurat", value as "domisili" | "pindah");
+  // Handle jenis surat change
+  const handleJenisSuratChange = (id: string) => {
+    const selected = jenisSuratList.find((item) => item._id === id);
+    setSelectedJenisSurat(selected);
+
+    if (selected) {
+      setFormType(selected.tipeForm);
+
+      // Set jenisSuratId untuk semua form
+      setValueUmum("jenisSuratId", id);
+      setValueDomisili("jenisSuratId", id);
+      setValuePindah("jenisSuratId", id);
+    }
   };
 
   // Handle search
@@ -216,14 +309,6 @@ export default function PengajuanSuratPage() {
   // Handle file upload
   const handleFileUpload = async (files: FileList) => {
     if (!files || files.length === 0) return;
-
-    // Validasi jumlah file
-    if (files.length < 3) {
-      toast.error(
-        "Harap upload minimal 3 dokumen (KTP, KK, dan Surat Keterangan RT)"
-      );
-      return;
-    }
 
     // Validasi tipe file
     for (let i = 0; i < files.length; i++) {
@@ -287,8 +372,17 @@ export default function PengajuanSuratPage() {
       // Update state dan form value
       setUploadedDokumen(uploadedUrls);
       setDokumenLabels(fileLabels);
-      setValue("dokumen", uploadedUrls);
-      toast.success("Semua dokumen berhasil diupload");
+
+      // Update form values based on form type
+      if (formType === "umum") {
+        setValueUmum("dokumen", uploadedUrls);
+      } else if (formType === "domisili") {
+        setValueDomisili("dokumen", uploadedUrls);
+      } else if (formType === "pindah") {
+        setValuePindah("dokumen", uploadedUrls);
+      }
+
+      toast.success("Dokumen berhasil diupload");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Upload gagal");
     } finally {
@@ -303,10 +397,43 @@ export default function PengajuanSuratPage() {
   const handleRemoveDokumen = () => {
     setUploadedDokumen([]);
     setDokumenLabels([]);
-    setValue("dokumen", []);
+
+    // Clear form values based on form type
+    if (formType === "umum") {
+      setValueUmum("dokumen", []);
+    } else if (formType === "domisili") {
+      setValueDomisili("dokumen", []);
+    } else if (formType === "pindah") {
+      setValuePindah("dokumen", []);
+    }
   };
 
-  const onSubmit = async (data: FormValues) => {
+  // Submit handler for umum form
+  const onSubmitUmum = async (data: z.infer<typeof pengajuanUmumSchema>) => {
+    setIsSubmitting(true);
+    try {
+      const result = await createPengajuanSurat(data);
+      if (result.success) {
+        setIsSuccess(true);
+        toast.success("Pengajuan surat berhasil dikirim!");
+        resetUmum();
+        setUploadedDokumen([]);
+        setDokumenLabels([]);
+      } else {
+        toast.error(result.message || "Gagal mengirim pengajuan");
+      }
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      toast.error("Terjadi kesalahan saat mengirim pengajuan");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Submit handler for domisili form
+  const onSubmitDomisili = async (
+    data: z.infer<typeof pengajuanDomisiliSchema>
+  ) => {
     setIsSubmitting(true);
     try {
       // Konversi array dokumen menjadi objek yang sesuai dengan model
@@ -321,7 +448,39 @@ export default function PengajuanSuratPage() {
       if (result.success) {
         setIsSuccess(true);
         toast.success("Pengajuan surat berhasil dikirim!");
-        reset();
+        resetDomisili();
+        setUploadedDokumen([]);
+        setDokumenLabels([]);
+      } else {
+        toast.error(result.message || "Gagal mengirim pengajuan");
+      }
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      toast.error("Terjadi kesalahan saat mengirim pengajuan");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Submit handler for pindah form
+  const onSubmitPindah = async (
+    data: z.infer<typeof pengajuanPindahSchema>
+  ) => {
+    setIsSubmitting(true);
+    try {
+      // Konversi array dokumen menjadi objek yang sesuai dengan model
+      const submissionData = {
+        ...data,
+        fotoKTP: data.dokumen[0] || "",
+        fotoKK: data.dokumen[1] || "",
+        fotoSuratKeterangan: data.dokumen[2] || "",
+      };
+
+      const result = await createPengajuanSurat(submissionData);
+      if (result.success) {
+        setIsSuccess(true);
+        toast.success("Pengajuan surat berhasil dikirim!");
+        resetPindah();
         setUploadedDokumen([]);
         setDokumenLabels([]);
       } else {
@@ -389,6 +548,19 @@ export default function PengajuanSuratPage() {
     }
   };
 
+  // Get current NIK and teleponWA based on form type
+  const getCurrentNik = () => {
+    if (formType === "umum") return nikUmum;
+    if (formType === "domisili") return nikDomisili;
+    return nikPindah;
+  };
+
+  const getCurrentTeleponWA = () => {
+    if (formType === "umum") return teleponWAUmum;
+    if (formType === "domisili") return teleponWADomisili;
+    return teleponWAPindah;
+  };
+
   if (isSuccess) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
@@ -434,8 +606,9 @@ export default function PengajuanSuratPage() {
                   <p className="font-medium mb-2">Informasi Penting:</p>
                   <p>
                     Untuk melihat status pengajuan, silakan gunakan NIK{" "}
-                    <strong>{nik}</strong> atau nomor telepon{" "}
-                    <strong>{teleponWA}</strong> pada halaman Status Pengajuan.
+                    <strong>{getCurrentNik()}</strong> atau nomor telepon{" "}
+                    <strong>{getCurrentTeleponWA()}</strong> pada halaman Status
+                    Pengajuan.
                   </p>
                 </div>
               </CardContent>
@@ -448,8 +621,8 @@ export default function PengajuanSuratPage() {
                   variant="outline"
                   onClick={() => {
                     setView("status");
-                    setSearchNik(nik || "");
-                    setSearchTelepon(teleponWA || "");
+                    setSearchNik(getCurrentNik() || "");
+                    setSearchTelepon(getCurrentTeleponWA() || "");
                     setTimeout(() => {
                       handleSearch();
                     }, 500);
@@ -525,509 +698,1180 @@ export default function PengajuanSuratPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                  <Tabs
-                    value={activeTab}
-                    onValueChange={handleTabChange}
-                    className="w-full"
-                  >
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger
-                        value="domisili"
-                        className="flex items-center gap-2"
+                {isLoadingJenisSurat ? (
+                  <div className="flex justify-center items-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : jenisSuratList.length === 0 ? (
+                  <div className="text-center py-8">
+                    <FileQuestion className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium mb-2">
+                      Belum ada jenis surat
+                    </h3>
+                    <p className="text-muted-foreground mb-6">
+                      Belum ada jenis surat yang tersedia. Silakan hubungi admin
+                      untuk menambahkan jenis surat.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mb-6">
+                      <Label
+                        htmlFor="jenisSurat"
+                        className="text-base font-medium"
                       >
-                        <FileText className="h-4 w-4" />
-                        Surat Domisili
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="pindah"
-                        className="flex items-center gap-2"
-                      >
-                        <FileText className="h-4 w-4" />
-                        Surat Pindah
-                      </TabsTrigger>
-                    </TabsList>
-
-                    {/* Data Pemohon - Disederhanakan */}
-                    <div className="mt-6">
-                      <div className="flex items-center gap-2 mb-4">
-                        <div className="bg-blue-100 p-2 rounded-full text-blue-600">
-                          <User className="h-5 w-5" />
-                        </div>
-                        <h3 className="text-lg font-medium">Data Pemohon</h3>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="nama">
-                            Nama Lengkap <span className="text-red-500">*</span>
-                          </Label>
-                          <Input id="nama" {...register("nama")} />
-                          {errors.nama && (
-                            <p className="text-red-500 text-xs">
-                              {errors.nama.message}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="nik">
-                            NIK <span className="text-red-500">*</span>
-                          </Label>
-                          <Input id="nik" {...register("nik")} />
-                          {errors.nik && (
-                            <p className="text-red-500 text-xs">
-                              {errors.nik.message}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="tempatLahir">
-                            Tempat Lahir <span className="text-red-500">*</span>
-                          </Label>
-                          <Input
-                            id="tempatLahir"
-                            {...register("tempatLahir")}
-                          />
-                          {errors.tempatLahir && (
-                            <p className="text-red-500 text-xs">
-                              {errors.tempatLahir.message}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="tanggalLahir">
-                            Tanggal Lahir{" "}
-                            <span className="text-red-500">*</span>
-                          </Label>
-                          <Input
-                            id="tanggalLahir"
-                            type="date"
-                            {...register("tanggalLahir")}
-                          />
-                          {errors.tanggalLahir && (
-                            <p className="text-red-500 text-xs">
-                              {errors.tanggalLahir.message}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 mt-8 mb-4">
-                        <div className="bg-blue-100 p-2 rounded-full text-blue-600">
-                          <MapPin className="h-5 w-5" />
-                        </div>
-                        <h4 className="text-lg font-medium">Alamat</h4>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2 md:col-span-2">
-                          <Label htmlFor="alamat">
-                            Alamat Lengkap{" "}
-                            <span className="text-red-500">*</span>
-                          </Label>
-                          <Textarea id="alamat" {...register("alamat")} />
-                          {errors.alamat && (
-                            <p className="text-red-500 text-xs">
-                              {errors.alamat.message}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="rt">
-                            RT <span className="text-red-500">*</span>
-                          </Label>
-                          <Input id="rt" {...register("rt")} />
-                          {errors.rt && (
-                            <p className="text-red-500 text-xs">
-                              {errors.rt.message}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="rw">
-                            RW <span className="text-red-500">*</span>
-                          </Label>
-                          <Input id="rw" {...register("rw")} />
-                          {errors.rw && (
-                            <p className="text-red-500 text-xs">
-                              {errors.rw.message}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="desa">
-                            Desa <span className="text-red-500">*</span>
-                          </Label>
-                          <Input id="desa" {...register("desa")} />
-                          {errors.desa && (
-                            <p className="text-red-500 text-xs">
-                              {errors.desa.message}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="kecamatan">
-                            Kecamatan <span className="text-red-500">*</span>
-                          </Label>
-                          <Input id="kecamatan" {...register("kecamatan")} />
-                          {errors.kecamatan && (
-                            <p className="text-red-500 text-xs">
-                              {errors.kecamatan.message}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="space-y-2 md:col-span-2">
-                          <Label htmlFor="kabupaten">
-                            Kabupaten <span className="text-red-500">*</span>
-                          </Label>
-                          <Input id="kabupaten" {...register("kabupaten")} />
-                          {errors.kabupaten && (
-                            <p className="text-red-500 text-xs">
-                              {errors.kabupaten.message}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 mt-8 mb-4">
-                        <div className="bg-blue-100 p-2 rounded-full text-blue-600">
-                          <Phone className="h-5 w-5" />
-                        </div>
-                        <h4 className="text-lg font-medium">Kontak</h4>
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="teleponWA">
-                            Nomor Telepon WhatsApp{" "}
-                            <span className="text-red-500">*</span>
-                          </Label>
-                          <Input
-                            id="teleponWA"
-                            {...register("teleponWA")}
-                            placeholder="Contoh: 081234567890"
-                          />
-                          {errors.teleponWA && (
-                            <p className="text-red-500 text-xs">
-                              {errors.teleponWA.message}
-                            </p>
-                          )}
-                        </div>
-                      </div>
+                        Pilih Jenis Surat{" "}
+                        <span className="text-red-500">*</span>
+                      </Label>
+                      <Select onValueChange={handleJenisSuratChange}>
+                        <SelectTrigger className="mt-2">
+                          <SelectValue placeholder="Pilih jenis surat" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {jenisSuratList.map((item) => (
+                            <SelectItem key={item._id} value={item._id}>
+                              {item.nama}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
 
-                    {/* Konten khusus untuk masing-masing jenis surat */}
-                    <TabsContent value="domisili" className="mt-6 space-y-4">
-                      <div className="flex items-center gap-2 mb-4">
-                        <div className="bg-blue-100 p-2 rounded-full text-blue-600">
-                          <FileCheck className="h-5 w-5" />
-                        </div>
-                        <h3 className="text-lg font-medium">
-                          Informasi Surat Domisili
+                    {selectedJenisSurat && (
+                      <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <h3 className="text-base font-medium text-blue-800 mb-2">
+                          {selectedJenisSurat.nama}
                         </h3>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="keperluan">
-                          Keperluan <span className="text-red-500">*</span>
-                        </Label>
-                        <Textarea
-                          id="keperluan"
-                          placeholder="Jelaskan keperluan pembuatan surat domisili"
-                          {...register("keperluan")}
-                          className="min-h-[100px]"
-                        />
-                        {errors.keperluan && (
-                          <p className="text-red-500 text-xs">
-                            {errors.keperluan.message}
-                          </p>
-                        )}
-                      </div>
-                    </TabsContent>
-
-                    <TabsContent value="pindah" className="mt-6 space-y-6">
-                      <div className="flex items-center gap-2 mb-4">
-                        <div className="bg-blue-100 p-2 rounded-full text-blue-600">
-                          <FileCheck className="h-5 w-5" />
-                        </div>
-                        <h3 className="text-lg font-medium">
-                          Informasi Surat Pindah
-                        </h3>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="keperluan">
-                          Keperluan <span className="text-red-500">*</span>
-                        </Label>
-                        <Textarea
-                          id="keperluan"
-                          placeholder="Jelaskan keperluan pembuatan surat pindah"
-                          {...register("keperluan")}
-                        />
-                        {errors.keperluan && (
-                          <p className="text-red-500 text-xs">
-                            {errors.keperluan.message}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="alasanPindah">
-                          Alasan Pindah <span className="text-red-500">*</span>
-                        </Label>
-                        <Textarea
-                          id="alasanPindah"
-                          placeholder="Jelaskan alasan kepindahan"
-                          {...register("alasanPindah")}
-                        />
-                        {errors.alasanPindah && (
-                          <p className="text-red-500 text-xs">
-                            {errors.alasanPindah.message}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2 mt-6 mb-4">
-                        <div className="bg-blue-100 p-2 rounded-full text-blue-600">
-                          <MapPin className="h-5 w-5" />
-                        </div>
-                        <h4 className="text-lg font-medium">Alamat Tujuan</h4>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2 md:col-span-2">
-                          <Label htmlFor="alamatTujuan">
-                            Alamat Lengkap Tujuan{" "}
-                            <span className="text-red-500">*</span>
-                          </Label>
-                          <Textarea
-                            id="alamatTujuan"
-                            {...register("alamatTujuan")}
-                          />
-                          {errors.alamatTujuan && (
-                            <p className="text-red-500 text-xs">
-                              {errors.alamatTujuan.message}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="rtTujuan">
-                            RT <span className="text-red-500">*</span>
-                          </Label>
-                          <Input id="rtTujuan" {...register("rtTujuan")} />
-                          {errors.rtTujuan && (
-                            <p className="text-red-500 text-xs">
-                              {errors.rtTujuan.message}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="rwTujuan">
-                            RW <span className="text-red-500">*</span>
-                          </Label>
-                          <Input id="rwTujuan" {...register("rwTujuan")} />
-                          {errors.rwTujuan && (
-                            <p className="text-red-500 text-xs">
-                              {errors.rwTujuan.message}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="desaTujuan">
-                            Desa <span className="text-red-500">*</span>
-                          </Label>
-                          <Input id="desaTujuan" {...register("desaTujuan")} />
-                          {errors.desaTujuan && (
-                            <p className="text-red-500 text-xs">
-                              {errors.desaTujuan.message}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="kecamatanTujuan">
-                            Kecamatan <span className="text-red-500">*</span>
-                          </Label>
-                          <Input
-                            id="kecamatanTujuan"
-                            {...register("kecamatanTujuan")}
-                          />
-                          {errors.kecamatanTujuan && (
-                            <p className="text-red-500 text-xs">
-                              {errors.kecamatanTujuan.message}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="space-y-2 md:col-span-2">
-                          <Label htmlFor="kabupatenTujuan">
-                            Kabupaten <span className="text-red-500">*</span>
-                          </Label>
-                          <Input
-                            id="kabupatenTujuan"
-                            {...register("kabupatenTujuan")}
-                          />
-                          {errors.kabupatenTujuan && (
-                            <p className="text-red-500 text-xs">
-                              {errors.kabupatenTujuan.message}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </TabsContent>
-                  </Tabs>
-
-                  {/* Upload Dokumen - Digabung menjadi satu bagian dengan satu tombol */}
-                  <div className="pt-6 border-t">
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="bg-blue-100 p-2 rounded-full text-blue-600">
-                        <Upload className="h-5 w-5" />
-                      </div>
-                      <h3 className="text-lg font-medium">Upload Dokumen</h3>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="bg-blue-50 border border-blue-200 rounded-md p-4 text-blue-800 text-sm">
-                        <p className="font-medium mb-2">
-                          Petunjuk Upload Dokumen:
+                        <p className="text-sm text-blue-700 mb-3">
+                          {selectedJenisSurat.deskripsi}
                         </p>
-                        <ul className="list-disc pl-5 space-y-1">
-                          <li>
-                            Upload 3 dokumen sekaligus: KTP, Kartu Keluarga, dan
-                            Surat Keterangan RT
-                          </li>
-                          <li>
-                            Pastikan semua dokumen terlihat jelas dan dapat
-                            dibaca
-                          </li>
-                          <li>
-                            Format file yang diperbolehkan: JPG, PNG, atau JPEG
-                          </li>
-                          <li>Ukuran maksimal masing-masing file: 5MB</li>
-                        </ul>
-                      </div>
-
-                      {uploadedDokumen.length === 0 ? (
-                        <div className="mt-2">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            ref={dokumenInputRef}
-                            onChange={(e) => {
-                              if (e.target.files && e.target.files.length > 0) {
-                                handleFileUpload(e.target.files);
-                              }
-                            }}
-                            multiple
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="w-full h-32 flex flex-col items-center justify-center border-dashed gap-2"
-                            onClick={() => dokumenInputRef.current?.click()}
-                            disabled={uploadingDokumen}
-                          >
-                            {uploadingDokumen ? (
-                              <>
-                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                                <span className="text-sm text-muted-foreground">
-                                  Uploading...
-                                </span>
-                                <Progress
-                                  value={progressDokumen}
-                                  className="w-full h-2"
-                                />
-                              </>
-                            ) : (
-                              <>
-                                <FileImage className="h-8 w-8 text-muted-foreground" />
-                                <span className="text-sm text-muted-foreground">
-                                  Klik untuk upload semua dokumen (KTP, KK, dan
-                                  Surat Keterangan RT)
-                                </span>
-                              </>
-                            )}
-                          </Button>
-                          {errors.dokumen && (
-                            <p className="text-red-500 text-xs mt-2">
-                              {errors.dokumen.message}
+                        {selectedJenisSurat.persyaratan && (
+                          <div className="mt-2">
+                            <p className="text-sm font-medium text-blue-800">
+                              Persyaratan:
                             </p>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {uploadedDokumen.map((url, index) => (
-                              <div
-                                key={index}
-                                className="relative border rounded-md overflow-hidden"
-                              >
-                                <div className="aspect-[4/3] relative">
-                                  <Image
-                                    src={url || "/placeholder.svg"}
-                                    alt={`Dokumen ${index + 1}`}
-                                    fill
-                                    className="object-cover"
-                                  />
+                            <p className="text-sm text-blue-700">
+                              {selectedJenisSurat.persyaratan}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {selectedJenisSurat && (
+                      <>
+                        {/* Form Umum */}
+                        {formType === "umum" && (
+                          <form
+                            onSubmit={handleSubmitUmum(onSubmitUmum)}
+                            className="space-y-6"
+                          >
+                            <div>
+                              <div className="flex items-center gap-2 mb-4">
+                                <div className="bg-blue-100 p-2 rounded-full text-blue-600">
+                                  <User className="h-5 w-5" />
                                 </div>
-                                <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white p-2 text-xs truncate">
-                                  {dokumenLabels[index] ||
-                                    `Dokumen ${index + 1}`}
+                                <h3 className="text-lg font-medium">
+                                  Data Pemohon
+                                </h3>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor="nama">
+                                    Nama Lengkap{" "}
+                                    <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input id="nama" {...registerUmum("nama")} />
+                                  {errorsUmum.nama && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsUmum.nama.message}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="nik">
+                                    NIK <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input id="nik" {...registerUmum("nik")} />
+                                  {errorsUmum.nik && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsUmum.nik.message}
+                                    </p>
+                                  )}
                                 </div>
                               </div>
-                            ))}
-                          </div>
-                          <div className="flex justify-end">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="text-red-500 border-red-200 hover:bg-red-50"
-                              onClick={handleRemoveDokumen}
-                            >
-                              <X className="h-4 w-4 mr-2" />
-                              Hapus Semua Dokumen
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
 
-                  <div className="pt-6 border-t flex justify-between items-center">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => router.push("/layanan-administrasi")}
-                    >
-                      <ArrowLeft className="mr-2 h-4 w-4" />
-                      Kembali
-                    </Button>
+                              <div className="mt-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor="teleponWA">
+                                    Nomor Telepon WhatsApp{" "}
+                                    <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input
+                                    id="teleponWA"
+                                    {...registerUmum("teleponWA")}
+                                    placeholder="Contoh: 081234567890"
+                                  />
+                                  {errorsUmum.teleponWA && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsUmum.teleponWA.message}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
 
-                    <Button
-                      type="submit"
-                      className="gap-2"
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting && (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      )}
-                      Kirim Pengajuan
-                    </Button>
-                  </div>
-                </form>
+                            {/* Upload Dokumen */}
+                            <div className="pt-6 border-t">
+                              <div className="flex items-center gap-2 mb-4">
+                                <div className="bg-blue-100 p-2 rounded-full text-blue-600">
+                                  <Upload className="h-5 w-5" />
+                                </div>
+                                <h3 className="text-lg font-medium">
+                                  Upload Dokumen
+                                </h3>
+                              </div>
+
+                              <div className="space-y-4">
+                                <div className="bg-blue-50 border border-blue-200 rounded-md p-4 text-blue-800 text-sm">
+                                  <p className="font-medium mb-2">
+                                    Petunjuk Upload Dokumen:
+                                  </p>
+                                  <ul className="list-disc pl-5 space-y-1">
+                                    <li>
+                                      Upload dokumen yang diperlukan sesuai
+                                      persyaratan
+                                    </li>
+                                    <li>
+                                      Pastikan semua dokumen terlihat jelas dan
+                                      dapat dibaca
+                                    </li>
+                                    <li>
+                                      Format file yang diperbolehkan: JPG, PNG,
+                                      atau JPEG
+                                    </li>
+                                    <li>
+                                      Ukuran maksimal masing-masing file: 5MB
+                                    </li>
+                                  </ul>
+                                </div>
+
+                                {uploadedDokumen.length === 0 ? (
+                                  <div className="mt-2">
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      ref={dokumenInputRef}
+                                      onChange={(e) => {
+                                        if (
+                                          e.target.files &&
+                                          e.target.files.length > 0
+                                        ) {
+                                          handleFileUpload(e.target.files);
+                                        }
+                                      }}
+                                      multiple
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      className="w-full h-32 flex flex-col items-center justify-center border-dashed gap-2"
+                                      onClick={() =>
+                                        dokumenInputRef.current?.click()
+                                      }
+                                      disabled={uploadingDokumen}
+                                    >
+                                      {uploadingDokumen ? (
+                                        <>
+                                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                                          <span className="text-sm text-muted-foreground">
+                                            Uploading...
+                                          </span>
+                                          <Progress
+                                            value={progressDokumen}
+                                            className="w-full h-2"
+                                          />
+                                        </>
+                                      ) : (
+                                        <>
+                                          <FileImage className="h-8 w-8 text-muted-foreground" />
+                                          <span className="text-sm text-muted-foreground">
+                                            Klik untuk upload dokumen
+                                          </span>
+                                        </>
+                                      )}
+                                    </Button>
+                                    {errorsUmum.dokumen && (
+                                      <p className="text-red-500 text-xs mt-2">
+                                        {errorsUmum.dokumen.message}
+                                      </p>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                      {uploadedDokumen.map((url, index) => (
+                                        <div
+                                          key={index}
+                                          className="relative border rounded-md overflow-hidden"
+                                        >
+                                          <div className="aspect-[4/3] relative">
+                                            <Image
+                                              src={url || "/placeholder.svg"}
+                                              alt={`Dokumen ${index + 1}`}
+                                              fill
+                                              className="object-cover"
+                                            />
+                                          </div>
+                                          <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white p-2 text-xs truncate">
+                                            {dokumenLabels[index] ||
+                                              `Dokumen ${index + 1}`}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                    <div className="flex justify-end">
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-red-500 border-red-200 hover:bg-red-50"
+                                        onClick={handleRemoveDokumen}
+                                      >
+                                        <X className="h-4 w-4 mr-2" />
+                                        Hapus Semua Dokumen
+                                      </Button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="pt-6 border-t flex justify-between items-center">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() =>
+                                  router.push("/layanan-administrasi")
+                                }
+                              >
+                                <ArrowLeft className="mr-2 h-4 w-4" />
+                                Kembali
+                              </Button>
+
+                              <Button
+                                type="submit"
+                                className="gap-2"
+                                disabled={isSubmitting}
+                              >
+                                {isSubmitting && (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                )}
+                                Kirim Pengajuan
+                              </Button>
+                            </div>
+                          </form>
+                        )}
+
+                        {/* Form Domisili */}
+                        {formType === "domisili" && (
+                          <form
+                            onSubmit={handleSubmitDomisili(onSubmitDomisili)}
+                            className="space-y-6"
+                          >
+                            <div>
+                              <div className="flex items-center gap-2 mb-4">
+                                <div className="bg-blue-100 p-2 rounded-full text-blue-600">
+                                  <User className="h-5 w-5" />
+                                </div>
+                                <h3 className="text-lg font-medium">
+                                  Data Pemohon
+                                </h3>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor="nama">
+                                    Nama Lengkap{" "}
+                                    <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input
+                                    id="nama"
+                                    {...registerDomisili("nama")}
+                                  />
+                                  {errorsDomisili.nama && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsDomisili.nama.message}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="nik">
+                                    NIK <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input
+                                    id="nik"
+                                    {...registerDomisili("nik")}
+                                  />
+                                  {errorsDomisili.nik && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsDomisili.nik.message}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="tempatLahir">
+                                    Tempat Lahir{" "}
+                                    <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input
+                                    id="tempatLahir"
+                                    {...registerDomisili("tempatLahir")}
+                                  />
+                                  {errorsDomisili.tempatLahir && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsDomisili.tempatLahir.message}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="tanggalLahir">
+                                    Tanggal Lahir{" "}
+                                    <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input
+                                    id="tanggalLahir"
+                                    type="date"
+                                    {...registerDomisili("tanggalLahir")}
+                                  />
+                                  {errorsDomisili.tanggalLahir && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsDomisili.tanggalLahir.message}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 mt-8 mb-4">
+                                <div className="bg-blue-100 p-2 rounded-full text-blue-600">
+                                  <MapPin className="h-5 w-5" />
+                                </div>
+                                <h4 className="text-lg font-medium">Alamat</h4>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2 md:col-span-2">
+                                  <Label htmlFor="alamat">
+                                    Alamat Lengkap{" "}
+                                    <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Textarea
+                                    id="alamat"
+                                    {...registerDomisili("alamat")}
+                                  />
+                                  {errorsDomisili.alamat && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsDomisili.alamat.message}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="rt">
+                                    RT <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input id="rt" {...registerDomisili("rt")} />
+                                  {errorsDomisili.rt && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsDomisili.rt.message}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="rw">
+                                    RW <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input id="rw" {...registerDomisili("rw")} />
+                                  {errorsDomisili.rw && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsDomisili.rw.message}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="desa">
+                                    Desa <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input
+                                    id="desa"
+                                    {...registerDomisili("desa")}
+                                  />
+                                  {errorsDomisili.desa && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsDomisili.desa.message}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="kecamatan">
+                                    Kecamatan{" "}
+                                    <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input
+                                    id="kecamatan"
+                                    {...registerDomisili("kecamatan")}
+                                  />
+                                  {errorsDomisili.kecamatan && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsDomisili.kecamatan.message}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="space-y-2 md:col-span-2">
+                                  <Label htmlFor="kabupaten">
+                                    Kabupaten{" "}
+                                    <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input
+                                    id="kabupaten"
+                                    {...registerDomisili("kabupaten")}
+                                  />
+                                  {errorsDomisili.kabupaten && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsDomisili.kabupaten.message}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 mt-8 mb-4">
+                                <div className="bg-blue-100 p-2 rounded-full text-blue-600">
+                                  <Phone className="h-5 w-5" />
+                                </div>
+                                <h4 className="text-lg font-medium">Kontak</h4>
+                              </div>
+
+                              <div className="grid grid-cols-1 gap-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor="teleponWA">
+                                    Nomor Telepon WhatsApp{" "}
+                                    <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input
+                                    id="teleponWA"
+                                    {...registerDomisili("teleponWA")}
+                                    placeholder="Contoh: 081234567890"
+                                  />
+                                  {errorsDomisili.teleponWA && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsDomisili.teleponWA.message}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 mt-8 mb-4">
+                                <div className="bg-blue-100 p-2 rounded-full text-blue-600">
+                                  <FileCheck className="h-5 w-5" />
+                                </div>
+                                <h3 className="text-lg font-medium">
+                                  Informasi Surat Domisili
+                                </h3>
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label htmlFor="keperluan">
+                                  Keperluan{" "}
+                                  <span className="text-red-500">*</span>
+                                </Label>
+                                <Textarea
+                                  id="keperluan"
+                                  placeholder="Jelaskan keperluan pembuatan surat domisili"
+                                  {...registerDomisili("keperluan")}
+                                  className="min-h-[100px]"
+                                />
+                                {errorsDomisili.keperluan && (
+                                  <p className="text-red-500 text-xs">
+                                    {errorsDomisili.keperluan.message}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Upload Dokumen */}
+                            <div className="pt-6 border-t">
+                              <div className="flex items-center gap-2 mb-4">
+                                <div className="bg-blue-100 p-2 rounded-full text-blue-600">
+                                  <Upload className="h-5 w-5" />
+                                </div>
+                                <h3 className="text-lg font-medium">
+                                  Upload Dokumen
+                                </h3>
+                              </div>
+
+                              <div className="space-y-4">
+                                <div className="bg-blue-50 border border-blue-200 rounded-md p-4 text-blue-800 text-sm">
+                                  <p className="font-medium mb-2">
+                                    Petunjuk Upload Dokumen:
+                                  </p>
+                                  <ul className="list-disc pl-5 space-y-1">
+                                    <li>
+                                      Upload 3 dokumen sekaligus: KTP, Kartu
+                                      Keluarga, dan Surat Keterangan RT
+                                    </li>
+                                    <li>
+                                      Pastikan semua dokumen terlihat jelas dan
+                                      dapat dibaca
+                                    </li>
+                                    <li>
+                                      Format file yang diperbolehkan: JPG, PNG,
+                                      atau JPEG
+                                    </li>
+                                    <li>
+                                      Ukuran maksimal masing-masing file: 5MB
+                                    </li>
+                                  </ul>
+                                </div>
+
+                                {uploadedDokumen.length === 0 ? (
+                                  <div className="mt-2">
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      ref={dokumenInputRef}
+                                      onChange={(e) => {
+                                        if (
+                                          e.target.files &&
+                                          e.target.files.length > 0
+                                        ) {
+                                          handleFileUpload(e.target.files);
+                                        }
+                                      }}
+                                      multiple
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      className="w-full h-32 flex flex-col items-center justify-center border-dashed gap-2"
+                                      onClick={() =>
+                                        dokumenInputRef.current?.click()
+                                      }
+                                      disabled={uploadingDokumen}
+                                    >
+                                      {uploadingDokumen ? (
+                                        <>
+                                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                                          <span className="text-sm text-muted-foreground">
+                                            Uploading...
+                                          </span>
+                                          <Progress
+                                            value={progressDokumen}
+                                            className="w-full h-2"
+                                          />
+                                        </>
+                                      ) : (
+                                        <>
+                                          <FileImage className="h-8 w-8 text-muted-foreground" />
+                                          <span className="text-sm text-muted-foreground">
+                                            Klik untuk upload semua dokumen
+                                            (KTP, KK, dan Surat Keterangan RT)
+                                          </span>
+                                        </>
+                                      )}
+                                    </Button>
+                                    {errorsDomisili.dokumen && (
+                                      <p className="text-red-500 text-xs mt-2">
+                                        {errorsDomisili.dokumen.message}
+                                      </p>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                      {uploadedDokumen.map((url, index) => (
+                                        <div
+                                          key={index}
+                                          className="relative border rounded-md overflow-hidden"
+                                        >
+                                          <div className="aspect-[4/3] relative">
+                                            <Image
+                                              src={url || "/placeholder.svg"}
+                                              alt={`Dokumen ${index + 1}`}
+                                              fill
+                                              className="object-cover"
+                                            />
+                                          </div>
+                                          <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white p-2 text-xs truncate">
+                                            {dokumenLabels[index] ||
+                                              `Dokumen ${index + 1}`}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                    <div className="flex justify-end">
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-red-500 border-red-200 hover:bg-red-50"
+                                        onClick={handleRemoveDokumen}
+                                      >
+                                        <X className="h-4 w-4 mr-2" />
+                                        Hapus Semua Dokumen
+                                      </Button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="pt-6 border-t flex justify-between items-center">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() =>
+                                  router.push("/layanan-administrasi")
+                                }
+                              >
+                                <ArrowLeft className="mr-2 h-4 w-4" />
+                                Kembali
+                              </Button>
+
+                              <Button
+                                type="submit"
+                                className="gap-2"
+                                disabled={isSubmitting}
+                              >
+                                {isSubmitting && (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                )}
+                                Kirim Pengajuan
+                              </Button>
+                            </div>
+                          </form>
+                        )}
+
+                        {/* Form Pindah */}
+                        {formType === "pindah" && (
+                          <form
+                            onSubmit={handleSubmitPindah(onSubmitPindah)}
+                            className="space-y-6"
+                          >
+                            <div>
+                              <div className="flex items-center gap-2 mb-4">
+                                <div className="bg-blue-100 p-2 rounded-full text-blue-600">
+                                  <User className="h-5 w-5" />
+                                </div>
+                                <h3 className="text-lg font-medium">
+                                  Data Pemohon
+                                </h3>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor="nama">
+                                    Nama Lengkap{" "}
+                                    <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input
+                                    id="nama"
+                                    {...registerPindah("nama")}
+                                  />
+                                  {errorsPindah.nama && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsPindah.nama.message}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="nik">
+                                    NIK <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input id="nik" {...registerPindah("nik")} />
+                                  {errorsPindah.nik && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsPindah.nik.message}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="tempatLahir">
+                                    Tempat Lahir{" "}
+                                    <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input
+                                    id="tempatLahir"
+                                    {...registerPindah("tempatLahir")}
+                                  />
+                                  {errorsPindah.tempatLahir && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsPindah.tempatLahir.message}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="tanggalLahir">
+                                    Tanggal Lahir{" "}
+                                    <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input
+                                    id="tanggalLahir"
+                                    type="date"
+                                    {...registerPindah("tanggalLahir")}
+                                  />
+                                  {errorsPindah.tanggalLahir && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsPindah.tanggalLahir.message}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 mt-8 mb-4">
+                                <div className="bg-blue-100 p-2 rounded-full text-blue-600">
+                                  <MapPin className="h-5 w-5" />
+                                </div>
+                                <h4 className="text-lg font-medium">
+                                  Alamat Asal
+                                </h4>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2 md:col-span-2">
+                                  <Label htmlFor="alamat">
+                                    Alamat Lengkap{" "}
+                                    <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Textarea
+                                    id="alamat"
+                                    {...registerPindah("alamat")}
+                                  />
+                                  {errorsPindah.alamat && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsPindah.alamat.message}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="rt">
+                                    RT <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input id="rt" {...registerPindah("rt")} />
+                                  {errorsPindah.rt && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsPindah.rt.message}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="rw">
+                                    RW <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input id="rw" {...registerPindah("rw")} />
+                                  {errorsPindah.rw && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsPindah.rw.message}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="desa">
+                                    Desa <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input
+                                    id="desa"
+                                    {...registerPindah("desa")}
+                                  />
+                                  {errorsPindah.desa && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsPindah.desa.message}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="kecamatan">
+                                    Kecamatan{" "}
+                                    <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input
+                                    id="kecamatan"
+                                    {...registerPindah("kecamatan")}
+                                  />
+                                  {errorsPindah.kecamatan && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsPindah.kecamatan.message}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="space-y-2 md:col-span-2">
+                                  <Label htmlFor="kabupaten">
+                                    Kabupaten{" "}
+                                    <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input
+                                    id="kabupaten"
+                                    {...registerPindah("kabupaten")}
+                                  />
+                                  {errorsPindah.kabupaten && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsPindah.kabupaten.message}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 mt-8 mb-4">
+                                <div className="bg-blue-100 p-2 rounded-full text-blue-600">
+                                  <MapPin className="h-5 w-5" />
+                                </div>
+                                <h4 className="text-lg font-medium">
+                                  Alamat Tujuan
+                                </h4>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2 md:col-span-2">
+                                  <Label htmlFor="alamatTujuan">
+                                    Alamat Lengkap Tujuan{" "}
+                                    <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Textarea
+                                    id="alamatTujuan"
+                                    {...registerPindah("alamatTujuan")}
+                                  />
+                                  {errorsPindah.alamatTujuan && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsPindah.alamatTujuan.message}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="rtTujuan">
+                                    RT <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input
+                                    id="rtTujuan"
+                                    {...registerPindah("rtTujuan")}
+                                  />
+                                  {errorsPindah.rtTujuan && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsPindah.rtTujuan.message}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="rwTujuan">
+                                    RW <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input
+                                    id="rwTujuan"
+                                    {...registerPindah("rwTujuan")}
+                                  />
+                                  {errorsPindah.rwTujuan && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsPindah.rwTujuan.message}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="desaTujuan">
+                                    Desa <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input
+                                    id="desaTujuan"
+                                    {...registerPindah("desaTujuan")}
+                                  />
+                                  {errorsPindah.desaTujuan && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsPindah.desaTujuan.message}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="kecamatanTujuan">
+                                    Kecamatan{" "}
+                                    <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input
+                                    id="kecamatanTujuan"
+                                    {...registerPindah("kecamatanTujuan")}
+                                  />
+                                  {errorsPindah.kecamatanTujuan && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsPindah.kecamatanTujuan.message}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="space-y-2 md:col-span-2">
+                                  <Label htmlFor="kabupatenTujuan">
+                                    Kabupaten{" "}
+                                    <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input
+                                    id="kabupatenTujuan"
+                                    {...registerPindah("kabupatenTujuan")}
+                                  />
+                                  {errorsPindah.kabupatenTujuan && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsPindah.kabupatenTujuan.message}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 mt-8 mb-4">
+                                <div className="bg-blue-100 p-2 rounded-full text-blue-600">
+                                  <Phone className="h-5 w-5" />
+                                </div>
+                                <h4 className="text-lg font-medium">Kontak</h4>
+                              </div>
+
+                              <div className="grid grid-cols-1 gap-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor="teleponWA">
+                                    Nomor Telepon WhatsApp{" "}
+                                    <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input
+                                    id="teleponWA"
+                                    {...registerPindah("teleponWA")}
+                                    placeholder="Contoh: 081234567890"
+                                  />
+                                  {errorsPindah.teleponWA && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsPindah.teleponWA.message}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 mt-8 mb-4">
+                                <div className="bg-blue-100 p-2 rounded-full text-blue-600">
+                                  <FileCheck className="h-5 w-5" />
+                                </div>
+                                <h3 className="text-lg font-medium">
+                                  Informasi Surat Pindah
+                                </h3>
+                              </div>
+
+                              <div className="space-y-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor="keperluan">
+                                    Keperluan{" "}
+                                    <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Textarea
+                                    id="keperluan"
+                                    placeholder="Jelaskan keperluan pembuatan surat pindah"
+                                    {...registerPindah("keperluan")}
+                                  />
+                                  {errorsPindah.keperluan && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsPindah.keperluan.message}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="alasanPindah">
+                                    Alasan Pindah{" "}
+                                    <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Textarea
+                                    id="alasanPindah"
+                                    placeholder="Jelaskan alasan kepindahan"
+                                    {...registerPindah("alasanPindah")}
+                                  />
+                                  {errorsPindah.alasanPindah && (
+                                    <p className="text-red-500 text-xs">
+                                      {errorsPindah.alasanPindah.message}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Upload Dokumen */}
+                            <div className="pt-6 border-t">
+                              <div className="flex items-center gap-2 mb-4">
+                                <div className="bg-blue-100 p-2 rounded-full text-blue-600">
+                                  <Upload className="h-5 w-5" />
+                                </div>
+                                <h3 className="text-lg font-medium">
+                                  Upload Dokumen
+                                </h3>
+                              </div>
+
+                              <div className="space-y-4">
+                                <div className="bg-blue-50 border border-blue-200 rounded-md p-4 text-blue-800 text-sm">
+                                  <p className="font-medium mb-2">
+                                    Petunjuk Upload Dokumen:
+                                  </p>
+                                  <ul className="list-disc pl-5 space-y-1">
+                                    <li>
+                                      Upload 3 dokumen sekaligus: KTP, Kartu
+                                      Keluarga, dan Surat Keterangan RT
+                                    </li>
+                                    <li>
+                                      Pastikan semua dokumen terlihat jelas dan
+                                      dapat dibaca
+                                    </li>
+                                    <li>
+                                      Format file yang diperbolehkan: JPG, PNG,
+                                      atau JPEG
+                                    </li>
+                                    <li>
+                                      Ukuran maksimal masing-masing file: 5MB
+                                    </li>
+                                  </ul>
+                                </div>
+
+                                {uploadedDokumen.length === 0 ? (
+                                  <div className="mt-2">
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      ref={dokumenInputRef}
+                                      onChange={(e) => {
+                                        if (
+                                          e.target.files &&
+                                          e.target.files.length > 0
+                                        ) {
+                                          handleFileUpload(e.target.files);
+                                        }
+                                      }}
+                                      multiple
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      className="w-full h-32 flex flex-col items-center justify-center border-dashed gap-2"
+                                      onClick={() =>
+                                        dokumenInputRef.current?.click()
+                                      }
+                                      disabled={uploadingDokumen}
+                                    >
+                                      {uploadingDokumen ? (
+                                        <>
+                                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                                          <span className="text-sm text-muted-foreground">
+                                            Uploading...
+                                          </span>
+                                          <Progress
+                                            value={progressDokumen}
+                                            className="w-full h-2"
+                                          />
+                                        </>
+                                      ) : (
+                                        <>
+                                          <FileImage className="h-8 w-8 text-muted-foreground" />
+                                          <span className="text-sm text-muted-foreground">
+                                            Klik untuk upload semua dokumen
+                                            (KTP, KK, dan Surat Keterangan RT)
+                                          </span>
+                                        </>
+                                      )}
+                                    </Button>
+                                    {errorsPindah.dokumen && (
+                                      <p className="text-red-500 text-xs mt-2">
+                                        {errorsPindah.dokumen.message}
+                                      </p>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                      {uploadedDokumen.map((url, index) => (
+                                        <div
+                                          key={index}
+                                          className="relative border rounded-md overflow-hidden"
+                                        >
+                                          <div className="aspect-[4/3] relative">
+                                            <Image
+                                              src={url || "/placeholder.svg"}
+                                              alt={`Dokumen ${index + 1}`}
+                                              fill
+                                              className="object-cover"
+                                            />
+                                          </div>
+                                          <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white p-2 text-xs truncate">
+                                            {dokumenLabels[index] ||
+                                              `Dokumen ${index + 1}`}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                    <div className="flex justify-end">
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-red-500 border-red-200 hover:bg-red-50"
+                                        onClick={handleRemoveDokumen}
+                                      >
+                                        <X className="h-4 w-4 mr-2" />
+                                        Hapus Semua Dokumen
+                                      </Button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="pt-6 border-t flex justify-between items-center">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() =>
+                                  router.push("/layanan-administrasi")
+                                }
+                              >
+                                <ArrowLeft className="mr-2 h-4 w-4" />
+                                Kembali
+                              </Button>
+
+                              <Button
+                                type="submit"
+                                className="gap-2"
+                                disabled={isSubmitting}
+                              >
+                                {isSubmitting && (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                )}
+                                Kirim Pengajuan
+                              </Button>
+                            </div>
+                          </form>
+                        )}
+                      </>
+                    )}
+                  </>
+                )}
               </CardContent>
             </Card>
           ) : (
@@ -1175,11 +2019,9 @@ export default function PengajuanSuratPage() {
                           <AlertDescription>
                             <div className="mt-2">
                               <p className="font-medium">
-                                {item.nama} - Surat{" "}
-                                {item.jenisSurat === "domisili"
-                                  ? "Domisili"
-                                  : "Pindah"}{" "}
-                                - {formatDate(item.tanggalPengajuan)}
+                                {item.nama} -{" "}
+                                {item.jenisSurat?.nama || item.kodeSurat} -{" "}
+                                {formatDate(item.tanggalPengajuan)}
                               </p>
                               <p className="mt-1">{item.catatan}</p>
                               <div className="mt-4">
@@ -1187,54 +2029,18 @@ export default function PengajuanSuratPage() {
                                   size="sm"
                                   onClick={() => {
                                     setView("form");
-                                    setActiveTab(
-                                      item.jenisSurat as "domisili" | "pindah"
+                                    // Find the jenis surat in the list
+                                    const jenisSurat = jenisSuratList.find(
+                                      (js) =>
+                                        js._id === item.jenisSurat?._id ||
+                                        js.kode === item.kodeSurat
                                     );
-                                    setValue(
-                                      "jenisSurat",
-                                      item.jenisSurat as "domisili" | "pindah"
-                                    );
-                                    // Pre-fill form with existing data
-                                    setValue("nama", item.nama);
-                                    setValue("nik", item.nik);
-                                    setValue("tempatLahir", item.tempatLahir);
-                                    setValue("tanggalLahir", item.tanggalLahir);
-                                    setValue("alamat", item.alamat);
-                                    setValue("rt", item.rt);
-                                    setValue("rw", item.rw);
-                                    setValue("desa", item.desa);
-                                    setValue("kecamatan", item.kecamatan);
-                                    setValue("kabupaten", item.kabupaten);
-                                    setValue("teleponWA", item.teleponWA);
-                                    setValue("keperluan", item.keperluan);
-
-                                    if (item.jenisSurat === "pindah") {
-                                      setValue(
-                                        "alamatTujuan",
-                                        item.alamatTujuan || ""
-                                      );
-                                      setValue("rtTujuan", item.rtTujuan || "");
-                                      setValue("rwTujuan", item.rwTujuan || "");
-                                      setValue(
-                                        "desaTujuan",
-                                        item.desaTujuan || ""
-                                      );
-                                      setValue(
-                                        "kecamatanTujuan",
-                                        item.kecamatanTujuan || ""
-                                      );
-                                      setValue(
-                                        "kabupatenTujuan",
-                                        item.kabupatenTujuan || ""
-                                      );
-                                      setValue(
-                                        "alasanPindah",
-                                        item.alasanPindah || ""
-                                      );
+                                    if (jenisSurat) {
+                                      handleJenisSuratChange(jenisSurat._id);
                                     }
                                   }}
                                 >
-                                  Perbaiki Pengajuan
+                                  Buat Pengajuan Baru
                                 </Button>
                               </div>
                             </div>
@@ -1256,10 +2062,7 @@ export default function PengajuanSuratPage() {
                                   -
                                 </span>
                                 <h3 className="font-medium">
-                                  Surat{" "}
-                                  {item.jenisSurat === "domisili"
-                                    ? "Domisili"
-                                    : "Pindah"}
+                                  {item.jenisSurat?.nama || item.kodeSurat}
                                 </h3>
                                 {getStatusBadge(item.status)}
                               </div>

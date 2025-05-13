@@ -2,37 +2,44 @@ import mongoose, { Schema } from "mongoose";
 
 const PengajuanSuratSchema = new Schema(
   {
-    // Jenis surat
+    // Referensi ke jenis surat
     jenisSurat: {
+      type: Schema.Types.ObjectId,
+      ref: "JenisSurat",
+      required: true,
+    },
+
+    // Kode jenis surat (untuk backward compatibility)
+    kodeSurat: {
       type: String,
-      enum: ["domisili", "pindah"],
       required: true,
     },
 
     // Data pemohon (disederhanakan)
     nama: { type: String, required: true },
     nik: { type: String, required: true },
-    tempatLahir: { type: String, required: true },
-    tanggalLahir: { type: String, required: true },
+    tempatLahir: { type: String },
+    tanggalLahir: { type: String },
 
     // Alamat (disederhanakan)
-    alamat: { type: String, required: true },
-    rt: { type: String, required: true },
-    rw: { type: String, required: true },
-    desa: { type: String, required: true },
-    kecamatan: { type: String, required: true },
-    kabupaten: { type: String, required: true },
+    alamat: { type: String },
+    rt: { type: String },
+    rw: { type: String },
+    desa: { type: String },
+    kecamatan: { type: String },
+    kabupaten: { type: String },
 
     // Kontak (disederhanakan)
     teleponWA: { type: String, required: true },
 
     // Keperluan
-    keperluan: { type: String, required: true },
+    keperluan: { type: String },
 
     // File uploads
-    fotoKTP: { type: String, required: true },
-    fotoKK: { type: String, required: true },
-    fotoSuratKeterangan: { type: String, required: true },
+    dokumen: [{ type: String }],
+    fotoKTP: { type: String },
+    fotoKK: { type: String },
+    fotoSuratKeterangan: { type: String },
 
     // Khusus untuk surat pindah
     alamatTujuan: { type: String },

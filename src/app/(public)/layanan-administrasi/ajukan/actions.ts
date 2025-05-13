@@ -3,14 +3,78 @@
 import { revalidatePath } from "next/cache";
 import dbConnect from "@/lib/db";
 import PengajuanSurat from "@/lib/models/PengajuanSurat";
+import JenisSurat from "@/lib/models/JenisSurat";
 
+// Fungsi untuk mendapatkan semua jenis surat yang aktif
+export async function getJenisSurat() {
+  try {
+    await dbConnect();
+
+    // Ambil semua jenis surat yang aktif
+    const jenisSurat = await JenisSurat.find({ aktif: true })
+      .sort({ urutan: 1, nama: 1 })
+      .lean();
+
+    return {
+      success: true,
+      data: JSON.parse(JSON.stringify(jenisSurat)),
+    };
+  } catch (error) {
+    console.error("Error fetching jenis surat:", error);
+    return {
+      success: false,
+      message: "Gagal mengambil data jenis surat",
+    };
+  }
+}
+
+// Fungsi untuk mendapatkan detail jenis surat berdasarkan ID
+export async function getDetailJenisSurat(id: string) {
+  try {
+    await dbConnect();
+
+    // Ambil detail jenis surat berdasarkan ID
+    const jenisSurat = await JenisSurat.findById(id).lean();
+
+    if (!jenisSurat) {
+      return {
+        success: false,
+        message: "Jenis surat tidak ditemukan",
+      };
+    }
+
+    return {
+      success: true,
+      data: JSON.parse(JSON.stringify(jenisSurat)),
+    };
+  } catch (error) {
+    console.error("Error fetching jenis surat detail:", error);
+    return {
+      success: false,
+      message: "Gagal mengambil detail jenis surat",
+    };
+  }
+}
+
+// Fungsi untuk membuat pengajuan surat
 export async function createPengajuanSurat(data: any) {
   try {
     await dbConnect();
 
+    // Ambil detail jenis surat
+    const jenisSurat = await JenisSurat.findById(data.jenisSuratId).lean();
+    if (!jenisSurat) {
+      return {
+        success: false,
+        message: "Jenis surat tidak ditemukan",
+      };
+    }
+
     // Tambahkan status dan tanggal pengajuan
     const pengajuanData = {
       ...data,
+      jenisSurat: data.jenisSuratId,
+      kodeSurat: jenisSurat.kode,
       status: "pending",
       tanggalPengajuan: new Date(),
     };
@@ -22,6 +86,7 @@ export async function createPengajuanSurat(data: any) {
     revalidatePath("/layanan-administrasi/ajukan");
     revalidatePath("/admin/pengajuan-surat");
 
+    // Konversi objek Mongoose menjadi plain object sebelum mengembalikannya
     return {
       success: true,
       data: JSON.parse(JSON.stringify(pengajuan)),
@@ -35,6 +100,7 @@ export async function createPengajuanSurat(data: any) {
   }
 }
 
+// Fungsi untuk mendapatkan pengajuan surat berdasarkan NIK atau nomor telepon
 export async function getUserPengajuan(identifiers?: {
   nik?: string;
   teleponWA?: string;
@@ -65,6 +131,7 @@ export async function getUserPengajuan(identifiers?: {
 
     // Ambil data pengajuan terbaru (maksimal 20)
     const pengajuan = await PengajuanSurat.find(filter)
+      .populate("jenisSurat", "nama kode tipeForm")
       .sort({ createdAt: -1 })
       .limit(20)
       .lean();
@@ -85,6 +152,7 @@ export async function getUserPengajuan(identifiers?: {
   }
 }
 
+// Fungsi untuk mengupdate status pengajuan surat
 export async function updateStatusPengajuan(
   id: string,
   status: string,
@@ -111,6 +179,7 @@ export async function updateStatusPengajuan(
       };
     }
 
+    // Revalidasi path untuk memperbarui data
     revalidatePath("/admin/pengajuan-surat");
     revalidatePath("/layanan-administrasi/ajukan");
 
