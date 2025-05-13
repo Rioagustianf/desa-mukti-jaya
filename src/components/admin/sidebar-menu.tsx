@@ -13,6 +13,7 @@ import {
   Phone,
   Megaphone,
   Users2,
+  Mail,
 } from "lucide-react";
 
 // Pengelompokan menu sesuai SRS dan usecase diagram
@@ -92,6 +93,11 @@ export const navMain = [
         title: "Informasi Layanan",
         url: "/admin/layanan-administrasi",
         icon: FolderCog,
+      },
+      {
+        title: "Pengajuan Surat",
+        url: "/admin/pengajuan-surat",
+        icon: Mail,
       },
       {
         title: "Panduan/Syarat Administrasi",

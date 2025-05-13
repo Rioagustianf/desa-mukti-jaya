@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
+import Link from "next/link";
 
 // Create a separate component for content that uses useSearchParams
 function LayananContent() {
@@ -36,25 +37,20 @@ function LayananContent() {
   const [expandedLayanan, setExpandedLayanan] = useState<string | null>(null);
   const searchParams = useSearchParams();
 
-  // Check if there's a hash in the URL to highlight a specific service
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // Get the hash from the URL (without the # symbol)
     const hash = window.location.hash.substring(1);
     if (hash && layanan) {
-      // Find the service with matching ID
       const targetLayanan = layanan.find((item) => item._id === hash);
       if (targetLayanan) {
-        // Expand this service
         setExpandedLayanan(hash);
 
-        // Scroll to the element
         setTimeout(() => {
           const element = document.getElementById(hash);
           if (element) {
             element.scrollIntoView({ behavior: "smooth", block: "center" });
-            // Add a highlight effect
+
             element.classList.add("ring-2", "ring-primary", "ring-offset-2");
             setTimeout(() => {
               element.classList.remove(
@@ -355,6 +351,12 @@ export default function LayananWargaPage() {
                 Informasi lengkap tentang layanan administrasi yang tersedia di
                 kantor desa
               </p>
+              <Link
+                href="/layanan-administrasi/ajukan"
+                className="mt-6 bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-300"
+              >
+                Ajukan Pembuatan Surat
+              </Link>
             </div>
           </div>
         </div>
