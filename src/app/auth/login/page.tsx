@@ -68,7 +68,11 @@ function LoginForm() {
         )}
       </div>
 
-      <Button type="submit" className="w-full" disabled={loading}>
+      <Button
+        type="submit"
+        className="w-full bg-sky-800 hover:bg-sky-700"
+        disabled={loading}
+      >
         {loading ? "Memproses..." : "Login"}
       </Button>
     </form>

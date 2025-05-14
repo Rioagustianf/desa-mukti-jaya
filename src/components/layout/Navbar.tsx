@@ -64,16 +64,22 @@ export default function Navbar() {
         scrolled ? "bg-sky-900 shadow-md" : "bg-transparent"
       )}
     >
-      <div className="container mx-auto px-4 flex h-16 items-center justify-between">
+      <div className="container mx-auto px-4 sm:px-6 flex h-16 sm:h-20 items-center justify-between">
         <Link href="/" className="flex items-center space-x-2">
-          <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center">
-            <Image src={logo} alt="Logo Desa Mukti Jaya" />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white flex items-center justify-center overflow-hidden">
+            <Image
+              src={logo || "/placeholder.svg"}
+              alt="Logo Desa Mukti Jaya"
+              className="w-full h-full object-contain"
+            />
           </div>
-          <span className="font-bold text-lg text-white">Desa Mukti Jaya</span>
+          <span className="font-bold text-sm sm:text-lg text-white">
+            Desa Mukti Jaya
+          </span>
         </Link>
 
         {/* Desktop Navigation */}
-        <div className="hidden lg:flex">
+        <div className="hidden lg:flex items-center gap-4">
           <NavigationMenu>
             <NavigationMenuList className="gap-1">
               {mainNavItems.map((item) =>
@@ -112,6 +118,12 @@ export default function Navbar() {
               )}
             </NavigationMenuList>
           </NavigationMenu>
+
+          <Link href="/auth/login">
+            <Button className="bg-sky-800 text-white border-white hover:bg-sky-700 hover:text-white">
+              Admin Login
+            </Button>
+          </Link>
         </div>
 
         {/* Mobile Navigation */}
@@ -121,32 +133,54 @@ export default function Navbar() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-white hover:bg-white/10"
+                className="text-white hover:bg-white/10 h-10 w-10"
               >
-                <Menu className="h-6 w-6" />
+                <Menu className="h-5 w-5" />
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="overflow-y-auto">
-              <nav className="flex flex-col gap-4 mt-8">
-                {mainNavItems.map((item) => (
-                  <div key={item.title} className="border-b pb-2">
-                    {item.children ? (
-                      <MobileAccordionItem
-                        title={item.title}
-                        items={item.children}
-                      />
+            <SheetContent side="left" className="w-[300px] p-0">
+              <div className="border-b py-4 px-6">
+                <Link href="/" className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center overflow-hidden">
+                    <Image
+                      src={logo || "/placeholder.svg"}
+                      alt="Logo Desa Mukti Jaya"
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  <span className="font-bold text-lg">Desa Mukti Jaya</span>
+                </Link>
+              </div>
+              <div className="px-6 py-4">
+                <nav className="flex flex-col space-y-1">
+                  {mainNavItems.map((item) =>
+                    item.children ? (
+                      <div key={item.title} className="py-1">
+                        <MobileNavAccordion
+                          title={item.title}
+                          items={item.children}
+                        />
+                      </div>
                     ) : (
                       <Link
+                        key={item.title}
                         href={item.href}
-                        className="font-medium hover:text-blue-500 block py-2"
+                        className="flex items-center py-2 text-sm font-medium rounded-md hover:bg-muted px-3"
                       >
                         {item.title}
                       </Link>
-                    )}
-                  </div>
-                ))}
-              </nav>
+                    )
+                  )}
+                </nav>
+              </div>
+              <div className="border-t mt-auto p-6">
+                <Link href="/auth/login" className="w-full">
+                  <Button className="w-full bg-sky-800 text-white">
+                    Admin Login
+                  </Button>
+                </Link>
+              </div>
             </SheetContent>
           </Sheet>
         </div>
@@ -171,30 +205,30 @@ const ListItem = ({ title, href }) => {
   );
 };
 
-// Mobile accordion item for nested navigation
-const MobileAccordionItem = ({ title, items }) => {
+// Replace the MobileAccordionItem with this improved version
+const MobileNavAccordion = ({ title, items }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div>
+    <div className="space-y-1">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between w-full py-2 font-medium hover:text-blue-500"
+        className="flex items-center justify-between w-full py-2 text-sm font-medium rounded-md hover:bg-muted px-3"
       >
         {title}
         <ChevronDown
-          className={`h-4 w-4 transition-transform ${
+          className={`h-4 w-4 transition-transform duration-200 ${
             isOpen ? "rotate-180" : ""
           }`}
         />
       </button>
       {isOpen && (
-        <div className="pl-4 mt-1 space-y-1 border-l border-gray-200">
+        <div className="ml-4 pl-2 border-l space-y-1">
           {items.map((item) => (
             <Link
               key={item.title}
               href={item.href}
-              className="block py-1.5 text-sm hover:text-blue-500"
+              className="flex py-2 text-sm rounded-md hover:bg-muted px-3"
             >
               {item.title}
             </Link>
