@@ -106,11 +106,6 @@ export const navMain = [
         url: "/admin/jenis-surat",
         icon: MailPlusIcon,
       },
-      {
-        title: "Panduan/Syarat Administrasi",
-        url: "/admin/panduan-administrasi",
-        icon: ClipboardList,
-      },
     ],
   },
 ];

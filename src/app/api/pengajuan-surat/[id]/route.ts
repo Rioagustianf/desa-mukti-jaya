@@ -12,7 +12,9 @@ export async function GET(
     await dbConnect();
 
     // Ambil data pengajuan surat berdasarkan ID
-    const pengajuan = await PengajuanSurat.findById(params.id).lean();
+    const pengajuan = await PengajuanSurat.findById(params.id)
+      .populate("jenisSurat", "nama kode tipeForm")
+      .lean();
 
     if (!pengajuan) {
       return NextResponse.json(
@@ -28,7 +30,7 @@ export async function GET(
   } catch (error) {
     console.error("Error fetching pengajuan surat:", error);
     return NextResponse.json(
-      { success: false, message: "Failed to fetch data" },
+      { success: false, message: "Failed to fetch data", error: String(error) },
       { status: 500 }
     );
   }
@@ -61,7 +63,9 @@ export async function PUT(
         tanggalUpdate: new Date(),
       },
       { new: true }
-    ).lean();
+    )
+      .populate("jenisSurat", "nama kode tipeForm")
+      .lean();
 
     if (!pengajuan) {
       return NextResponse.json(
@@ -77,7 +81,11 @@ export async function PUT(
   } catch (error) {
     console.error("Error updating pengajuan surat:", error);
     return NextResponse.json(
-      { success: false, message: "Failed to update pengajuan" },
+      {
+        success: false,
+        message: "Failed to update pengajuan",
+        error: String(error),
+      },
       { status: 500 }
     );
   }
@@ -116,7 +124,11 @@ export async function DELETE(
   } catch (error) {
     console.error("Error deleting pengajuan surat:", error);
     return NextResponse.json(
-      { success: false, message: "Failed to delete pengajuan" },
+      {
+        success: false,
+        message: "Failed to delete pengajuan",
+        error: String(error),
+      },
       { status: 500 }
     );
   }

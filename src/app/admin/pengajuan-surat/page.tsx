@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   usePengajuanSurat,
   type PengajuanSuratItem,
@@ -62,11 +62,14 @@ import {
   FileCheck,
   ImageIcon,
   X,
+  RefreshCw,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import Image from "next/image";
+import { usePengajuanSuratDetail } from "@/hooks/usePengajuanSurat";
 
 export default function AdminPengajuanSuratPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
@@ -76,6 +79,9 @@ export default function AdminPengajuanSuratPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedPengajuan, setSelectedPengajuan] =
     useState<PengajuanSuratItem | null>(null);
+  const [selectedPengajuanId, setSelectedPengajuanId] = useState<string | null>(
+    null
+  );
   const [statusUpdateOpen, setStatusUpdateOpen] = useState(false);
   const [newStatus, setNewStatus] = useState<string>("");
   const [catatan, setCatatan] = useState("");
@@ -96,10 +102,27 @@ export default function AdminPengajuanSuratPage() {
     error,
     updateStatus,
     deletePengajuan,
+    mutate: mutatePengajuanList,
   } = usePengajuanSurat(filters);
 
+  // Fetch detail data when viewing a specific pengajuan
+  const {
+    pengajuan: detailPengajuan,
+    isLoading: isLoadingDetail,
+    isError: isErrorDetail,
+    error: errorDetail,
+    mutate: mutateDetail,
+  } = usePengajuanSuratDetail(selectedPengajuanId || "");
+
+  // Update selected pengajuan when detail data is loaded
+  useEffect(() => {
+    if (detailPengajuan && !isLoadingDetail) {
+      setSelectedPengajuan(detailPengajuan);
+    }
+  }, [detailPengajuan, isLoadingDetail]);
+
   const handleViewDetail = (item: PengajuanSuratItem) => {
-    setSelectedPengajuan(item);
+    setSelectedPengajuanId(item._id);
     setDetailOpen(true);
   };
 
@@ -109,7 +132,7 @@ export default function AdminPengajuanSuratPage() {
   };
 
   const handleStatusUpdate = (item: PengajuanSuratItem) => {
-    setSelectedPengajuan(item);
+    setSelectedPengajuanId(item._id);
     setNewStatus(item.status);
     setCatatan(item.catatan || "");
     setStatusUpdateOpen(true);
@@ -131,13 +154,19 @@ export default function AdminPengajuanSuratPage() {
   };
 
   const confirmStatusUpdate = async () => {
-    if (!selectedPengajuan || !newStatus) return;
+    if (!selectedPengajuanId || !newStatus) return;
 
     setIsSubmitting(true);
     try {
-      await updateStatus(selectedPengajuan._id, newStatus, catatan);
+      await updateStatus(selectedPengajuanId, newStatus, catatan);
       toast.success("Status berhasil diperbarui");
       setStatusUpdateOpen(false);
+
+      // Refresh data
+      mutatePengajuanList();
+      if (detailOpen) {
+        mutateDetail();
+      }
     } catch (error) {
       toast.error("Gagal memperbarui status");
     } finally {
@@ -204,6 +233,37 @@ export default function AdminPengajuanSuratPage() {
     }
   };
 
+  // Helper function to get jenis surat name
+  const getJenisSuratName = (item: PengajuanSuratItem) => {
+    if (typeof item.jenisSurat === "object" && item.jenisSurat !== null) {
+      return item.jenisSurat.nama;
+    } else if (item.kodeSurat) {
+      // Fallback to kodeSurat if jenisSurat is not an object
+      return item.kodeSurat;
+    } else if (typeof item.jenisSurat === "string") {
+      // If jenisSurat is a string (ID or type)
+      if (item.jenisSurat === "domisili") return "Surat Domisili";
+      if (item.jenisSurat === "pindah") return "Surat Pindah";
+      return item.jenisSurat;
+    }
+    return "Tidak diketahui";
+  };
+
+  // Helper function to get jenis surat type
+  const getJenisSuratType = (item: PengajuanSuratItem) => {
+    if (typeof item.jenisSurat === "object" && item.jenisSurat !== null) {
+      return item.jenisSurat.tipeForm;
+    } else if (typeof item.jenisSurat === "string") {
+      // If jenisSurat is a string, it might be the type itself
+      if (item.jenisSurat === "domisili" || item.jenisSurat === "pindah") {
+        return item.jenisSurat;
+      }
+    }
+    // Try to infer from other fields
+    if (item.alamatTujuan) return "pindah";
+    return "domisili"; // Default fallback
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -222,6 +282,17 @@ export default function AdminPengajuanSuratPage() {
                 {!isLoading && `Menampilkan ${pengajuan.length} pengajuan`}
               </CardDescription>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => mutatePengajuanList()}
+              disabled={isLoading}
+            >
+              <RefreshCw
+                className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
+              />
+              Refresh
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -320,11 +391,7 @@ export default function AdminPengajuanSuratPage() {
                   {pengajuan.map((item) => (
                     <TableRow key={item._id}>
                       <TableCell className="font-medium">{item.nama}</TableCell>
-                      <TableCell>
-                        {item.jenisSurat === "domisili"
-                          ? "Surat Domisili"
-                          : "Surat Pindah"}
-                      </TableCell>
+                      <TableCell>{getJenisSuratName(item)}</TableCell>
                       <TableCell>{formatDate(item.tanggalPengajuan)}</TableCell>
                       <TableCell>{getStatusBadge(item.status)}</TableCell>
                       <TableCell className="text-right">
@@ -368,15 +435,32 @@ export default function AdminPengajuanSuratPage() {
       {/* Detail Dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="sm:max-w-[700px]">
-          {selectedPengajuan && (
+          {isLoadingDetail ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <p>Memuat detail pengajuan...</p>
+              </div>
+            </div>
+          ) : isErrorDetail ? (
+            <div className="flex flex-col items-center justify-center py-8">
+              <AlertTriangle className="h-12 w-12 text-amber-500 mb-4" />
+              <h3 className="text-lg font-medium mb-2">Terjadi Kesalahan</h3>
+              <p className="text-muted-foreground text-center mb-6">
+                {errorDetail?.message || "Gagal memuat detail pengajuan"}
+              </p>
+              <Button onClick={() => mutateDetail()}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Coba Lagi
+              </Button>
+            </div>
+          ) : selectedPengajuan ? (
             <>
               <DialogHeader>
                 <DialogTitle>Detail Pengajuan Surat</DialogTitle>
                 <DialogDescription>
-                  {selectedPengajuan.jenisSurat === "domisili"
-                    ? "Surat Domisili"
-                    : "Surat Pindah"}{" "}
-                  - {getStatusBadge(selectedPengajuan.status)}
+                  {getJenisSuratName(selectedPengajuan)} -{" "}
+                  {getStatusBadge(selectedPengajuan.status)}
                 </DialogDescription>
               </DialogHeader>
 
@@ -417,48 +501,61 @@ export default function AdminPengajuanSuratPage() {
                       <p>{selectedPengajuan.nik}</p>
                     </div>
 
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">
-                        Tempat, Tanggal Lahir
-                      </p>
-                      <p>
-                        {selectedPengajuan.tempatLahir},{" "}
-                        {selectedPengajuan.tanggalLahir}
-                      </p>
-                    </div>
+                    {selectedPengajuan.tempatLahir &&
+                      selectedPengajuan.tanggalLahir && (
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium">
+                            Tempat, Tanggal Lahir
+                          </p>
+                          <p>
+                            {selectedPengajuan.tempatLahir},{" "}
+                            {selectedPengajuan.tanggalLahir}
+                          </p>
+                        </div>
+                      )}
                   </div>
                 </div>
 
-                <div className="border-t pt-4">
-                  <h3 className="text-lg font-medium mb-3 flex items-center gap-1">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    Alamat
-                  </h3>
-                  <p className="mb-2">{selectedPengajuan.alamat}</p>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">RT/RW</p>
-                      <p>
-                        {selectedPengajuan.rt}/{selectedPengajuan.rw}
-                      </p>
-                    </div>
+                {selectedPengajuan.alamat && (
+                  <div className="border-t pt-4">
+                    <h3 className="text-lg font-medium mb-3 flex items-center gap-1">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      Alamat
+                    </h3>
+                    <p className="mb-2">{selectedPengajuan.alamat}</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {selectedPengajuan.rt && selectedPengajuan.rw && (
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium">RT/RW</p>
+                          <p>
+                            {selectedPengajuan.rt}/{selectedPengajuan.rw}
+                          </p>
+                        </div>
+                      )}
 
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">Desa</p>
-                      <p>{selectedPengajuan.desa}</p>
-                    </div>
+                      {selectedPengajuan.desa && (
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium">Desa</p>
+                          <p>{selectedPengajuan.desa}</p>
+                        </div>
+                      )}
 
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">Kecamatan</p>
-                      <p>{selectedPengajuan.kecamatan}</p>
-                    </div>
+                      {selectedPengajuan.kecamatan && (
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium">Kecamatan</p>
+                          <p>{selectedPengajuan.kecamatan}</p>
+                        </div>
+                      )}
 
-                    <div className="space-y-1 md:col-span-3">
-                      <p className="text-sm font-medium">Kabupaten</p>
-                      <p>{selectedPengajuan.kabupaten}</p>
+                      {selectedPengajuan.kabupaten && (
+                        <div className="space-y-1 md:col-span-3">
+                          <p className="text-sm font-medium">Kabupaten</p>
+                          <p>{selectedPengajuan.kabupaten}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
+                )}
 
                 <div className="border-t pt-4">
                   <h3 className="text-lg font-medium mb-3">Kontak</h3>
@@ -473,146 +570,216 @@ export default function AdminPengajuanSuratPage() {
                   </div>
                 </div>
 
-                <div className="border-t pt-4">
-                  <h3 className="text-lg font-medium mb-3">Keperluan</h3>
-                  <p>{selectedPengajuan.keperluan}</p>
-                </div>
-
-                {selectedPengajuan.jenisSurat === "pindah" && (
+                {selectedPengajuan.keperluan && (
                   <div className="border-t pt-4">
-                    <h3 className="text-lg font-medium mb-3">
-                      Data Kepindahan
-                    </h3>
-
-                    <div className="space-y-1 mb-3">
-                      <p className="text-sm font-medium">Alasan Pindah</p>
-                      <p>{selectedPengajuan.alasanPindah}</p>
-                    </div>
-
-                    <h4 className="text-md font-medium mb-2 flex items-center gap-1">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
-                      Alamat Tujuan
-                    </h4>
-                    <p className="mb-2">{selectedPengajuan.alamatTujuan}</p>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium">RT/RW</p>
-                        <p>
-                          {selectedPengajuan.rtTujuan}/
-                          {selectedPengajuan.rwTujuan}
-                        </p>
-                      </div>
-
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium">Desa</p>
-                        <p>{selectedPengajuan.desaTujuan}</p>
-                      </div>
-
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium">Kecamatan</p>
-                        <p>{selectedPengajuan.kecamatanTujuan}</p>
-                      </div>
-
-                      <div className="space-y-1 md:col-span-3">
-                        <p className="text-sm font-medium">Kabupaten</p>
-                        <p>{selectedPengajuan.kabupatenTujuan}</p>
-                      </div>
-                    </div>
+                    <h3 className="text-lg font-medium mb-3">Keperluan</h3>
+                    <p>{selectedPengajuan.keperluan}</p>
                   </div>
                 )}
+
+                {getJenisSuratType(selectedPengajuan) === "pindah" &&
+                  selectedPengajuan.alamatTujuan && (
+                    <div className="border-t pt-4">
+                      <h3 className="text-lg font-medium mb-3">
+                        Data Kepindahan
+                      </h3>
+
+                      {selectedPengajuan.alasanPindah && (
+                        <div className="space-y-1 mb-3">
+                          <p className="text-sm font-medium">Alasan Pindah</p>
+                          <p>{selectedPengajuan.alasanPindah}</p>
+                        </div>
+                      )}
+
+                      <h4 className="text-md font-medium mb-2 flex items-center gap-1">
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                        Alamat Tujuan
+                      </h4>
+                      <p className="mb-2">{selectedPengajuan.alamatTujuan}</p>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {selectedPengajuan.rtTujuan &&
+                          selectedPengajuan.rwTujuan && (
+                            <div className="space-y-1">
+                              <p className="text-sm font-medium">RT/RW</p>
+                              <p>
+                                {selectedPengajuan.rtTujuan}/
+                                {selectedPengajuan.rwTujuan}
+                              </p>
+                            </div>
+                          )}
+
+                        {selectedPengajuan.desaTujuan && (
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium">Desa</p>
+                            <p>{selectedPengajuan.desaTujuan}</p>
+                          </div>
+                        )}
+
+                        {selectedPengajuan.kecamatanTujuan && (
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium">Kecamatan</p>
+                            <p>{selectedPengajuan.kecamatanTujuan}</p>
+                          </div>
+                        )}
+
+                        {selectedPengajuan.kabupatenTujuan && (
+                          <div className="space-y-1 md:col-span-3">
+                            <p className="text-sm font-medium">Kabupaten</p>
+                            <p>{selectedPengajuan.kabupatenTujuan}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                 <div className="border-t pt-4">
                   <h3 className="text-lg font-medium mb-3">Dokumen</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium">KTP</p>
-                      <div className="relative border rounded-md overflow-hidden">
-                        <div className="aspect-[4/3] relative">
-                          <Image
-                            src={
-                              selectedPengajuan.fotoKTP || "/placeholder.svg"
-                            }
-                            alt="KTP"
-                            fill
-                            className="object-cover cursor-pointer"
-                            onClick={() =>
-                              handleImagePreview(selectedPengajuan.fotoKTP)
-                            }
-                          />
-                        </div>
-                        <Button
-                          type="button"
-                          size="icon"
-                          className="absolute top-2 right-2 h-8 w-8 rounded-full bg-white/80 hover:bg-white"
-                          onClick={() =>
-                            handleImagePreview(selectedPengajuan.fotoKTP)
-                          }
-                        >
-                          <ImageIcon className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium">Kartu Keluarga</p>
-                      <div className="relative border rounded-md overflow-hidden">
-                        <div className="aspect-[4/3] relative">
-                          <Image
-                            src={selectedPengajuan.fotoKK || "/placeholder.svg"}
-                            alt="Kartu Keluarga"
-                            fill
-                            className="object-cover cursor-pointer"
-                            onClick={() =>
-                              handleImagePreview(selectedPengajuan.fotoKK)
-                            }
-                          />
-                        </div>
-                        <Button
-                          type="button"
-                          size="icon"
-                          className="absolute top-2 right-2 h-8 w-8 rounded-full bg-white/80 hover:bg-white"
-                          onClick={() =>
-                            handleImagePreview(selectedPengajuan.fotoKK)
-                          }
-                        >
-                          <ImageIcon className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium">Surat Keterangan</p>
-                      <div className="relative border rounded-md overflow-hidden">
-                        <div className="aspect-[4/3] relative">
-                          <Image
-                            src={
-                              selectedPengajuan.fotoSuratKeterangan ||
-                              "/placeholder.svg"
-                            }
-                            alt="Surat Keterangan"
-                            fill
-                            className="object-cover cursor-pointer"
+                    {/* Prioritaskan dokumen dari field terpisah jika ada */}
+                    {selectedPengajuan.fotoKTP && (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">KTP</p>
+                        <div className="relative border rounded-md overflow-hidden">
+                          <div className="aspect-[4/3] relative">
+                            <Image
+                              src={
+                                selectedPengajuan.fotoKTP || "/placeholder.svg"
+                              }
+                              alt="KTP"
+                              fill
+                              className="object-cover cursor-pointer"
+                              onClick={() =>
+                                handleImagePreview(
+                                  selectedPengajuan.fotoKTP || ""
+                                )
+                              }
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            size="icon"
+                            className="absolute top-2 right-2 h-8 w-8 rounded-full bg-white/80 hover:bg-white"
                             onClick={() =>
                               handleImagePreview(
-                                selectedPengajuan.fotoSuratKeterangan
+                                selectedPengajuan.fotoKTP || ""
                               )
                             }
-                          />
+                          >
+                            <ImageIcon className="h-4 w-4" />
+                          </Button>
                         </div>
-                        <Button
-                          type="button"
-                          size="icon"
-                          className="absolute top-2 right-2 h-8 w-8 rounded-full bg-white/80 hover:bg-white"
-                          onClick={() =>
-                            handleImagePreview(
-                              selectedPengajuan.fotoSuratKeterangan
-                            )
-                          }
-                        >
-                          <ImageIcon className="h-4 w-4" />
-                        </Button>
                       </div>
-                    </div>
+                    )}
+
+                    {selectedPengajuan.fotoKK && (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">Kartu Keluarga</p>
+                        <div className="relative border rounded-md overflow-hidden">
+                          <div className="aspect-[4/3] relative">
+                            <Image
+                              src={
+                                selectedPengajuan.fotoKK || "/placeholder.svg"
+                              }
+                              alt="Kartu Keluarga"
+                              fill
+                              className="object-cover cursor-pointer"
+                              onClick={() =>
+                                handleImagePreview(
+                                  selectedPengajuan.fotoKK || ""
+                                )
+                              }
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            size="icon"
+                            className="absolute top-2 right-2 h-8 w-8 rounded-full bg-white/80 hover:bg-white"
+                            onClick={() =>
+                              handleImagePreview(selectedPengajuan.fotoKK || "")
+                            }
+                          >
+                            <ImageIcon className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedPengajuan.fotoSuratKeterangan && (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">Surat Keterangan</p>
+                        <div className="relative border rounded-md overflow-hidden">
+                          <div className="aspect-[4/3] relative">
+                            <Image
+                              src={
+                                selectedPengajuan.fotoSuratKeterangan ||
+                                "/placeholder.svg"
+                              }
+                              alt="Surat Keterangan"
+                              fill
+                              className="object-cover cursor-pointer"
+                              onClick={() =>
+                                handleImagePreview(
+                                  selectedPengajuan.fotoSuratKeterangan || ""
+                                )
+                              }
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            size="icon"
+                            className="absolute top-2 right-2 h-8 w-8 rounded-full bg-white/80 hover:bg-white"
+                            onClick={() =>
+                              handleImagePreview(
+                                selectedPengajuan.fotoSuratKeterangan || ""
+                              )
+                            }
+                          >
+                            <ImageIcon className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Tampilkan dokumen dari array hanya jika tidak ada field terpisah atau jika ada dokumen tambahan */}
+                    {selectedPengajuan.dokumen &&
+                      selectedPengajuan.dokumen.length > 0 &&
+                      selectedPengajuan.dokumen
+                        // Filter dokumen yang sudah ditampilkan dari field terpisah
+                        .filter(
+                          (url) =>
+                            (!selectedPengajuan.fotoKTP ||
+                              url !== selectedPengajuan.fotoKTP) &&
+                            (!selectedPengajuan.fotoKK ||
+                              url !== selectedPengajuan.fotoKK) &&
+                            (!selectedPengajuan.fotoSuratKeterangan ||
+                              url !== selectedPengajuan.fotoSuratKeterangan)
+                        )
+                        .map((url, index) => (
+                          <div key={index} className="space-y-2">
+                            <p className="text-sm font-medium">
+                              Dokumen {index + 1}
+                            </p>
+                            <div className="relative border rounded-md overflow-hidden">
+                              <div className="aspect-[4/3] relative">
+                                <Image
+                                  src={url || "/placeholder.svg"}
+                                  alt={`Dokumen ${index + 1}`}
+                                  fill
+                                  className="object-cover cursor-pointer"
+                                  onClick={() => handleImagePreview(url)}
+                                />
+                              </div>
+                              <Button
+                                type="button"
+                                size="icon"
+                                className="absolute top-2 right-2 h-8 w-8 rounded-full bg-white/80 hover:bg-white"
+                                onClick={() => handleImagePreview(url)}
+                              >
+                                <ImageIcon className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
                   </div>
                 </div>
 
@@ -638,6 +805,10 @@ export default function AdminPengajuanSuratPage() {
                 </Button>
               </DialogFooter>
             </>
+          ) : (
+            <div className="flex justify-center items-center py-8">
+              <p className="text-muted-foreground">Data tidak ditemukan</p>
+            </div>
           )}
         </DialogContent>
       </Dialog>
@@ -651,10 +822,8 @@ export default function AdminPengajuanSuratPage() {
                 <DialogTitle>Update Status Pengajuan</DialogTitle>
                 <DialogDescription>
                   Perbarui status pengajuan surat{" "}
-                  {selectedPengajuan.jenisSurat === "domisili"
-                    ? "domisili"
-                    : "pindah"}{" "}
-                  untuk {selectedPengajuan.nama}
+                  {getJenisSuratName(selectedPengajuan)} untuk{" "}
+                  {selectedPengajuan.nama}
                 </DialogDescription>
               </DialogHeader>
 
@@ -735,6 +904,9 @@ export default function AdminPengajuanSuratPage() {
       {/* Image Preview Dialog */}
       <Dialog open={imagePreviewOpen} onOpenChange={setImagePreviewOpen}>
         <DialogContent className="sm:max-w-[800px] p-0 overflow-hidden">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Preview Gambar</DialogTitle>
+          </DialogHeader>
           {imagePreviewUrl && (
             <div className="relative w-full h-[80vh]">
               <Image

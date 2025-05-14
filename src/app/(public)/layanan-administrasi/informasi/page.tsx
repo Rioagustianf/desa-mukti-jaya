@@ -25,8 +25,6 @@ import {
   ChevronRight,
   Info,
 } from "lucide-react";
-import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
 import Link from "next/link";
 
 // Create a separate component for content that uses useSearchParams
@@ -35,7 +33,6 @@ function LayananContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("semua");
   const [expandedLayanan, setExpandedLayanan] = useState<string | null>(null);
-  const searchParams = useSearchParams();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -63,7 +60,7 @@ function LayananContent() {
         }, 500);
       }
     }
-  }, [layanan, searchParams]);
+  }, [layanan]);
 
   // Filter layanan based on search query and selected category
   const filteredLayanan = useMemo(() => {
@@ -333,7 +330,7 @@ function LayananLoadingFallback() {
   );
 }
 
-export default function LayananWargaPage() {
+export default function LayananAdministrasiPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
       {/* Hero Section - No hooks used here, so no need for Suspense */}
@@ -364,9 +361,7 @@ export default function LayananWargaPage() {
 
       <div className="container mx-auto px-4 py-12">
         <div className="w-full max-w-6xl mx-auto">
-          <Suspense fallback={<LayananLoadingFallback />}>
-            <LayananContent />
-          </Suspense>
+          <LayananContent />
         </div>
       </div>
     </div>

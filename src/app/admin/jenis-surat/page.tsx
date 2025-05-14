@@ -62,7 +62,17 @@ import {
   Check,
   X,
   ArrowUpDown,
+  HelpCircle,
+  List,
+  Info,
+  Eye,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import axios from "axios";
 
 // Schema untuk validasi form
@@ -91,6 +101,7 @@ export default function AdminJenisSuratPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState<string>("urutan");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [showPersyaratanPreview, setShowPersyaratanPreview] = useState(false);
   const router = useRouter();
 
   const {
@@ -108,6 +119,16 @@ export default function AdminJenisSuratPage() {
       urutan: 0,
     },
   });
+
+  // Contoh persyaratan untuk template
+  const contohPersyaratan = `1. Fotokopi KTP pemohon
+2. Fotokopi Kartu Keluarga (KK)
+3. Surat pengantar dari RT/RW
+4. Pas foto ukuran 3x4 (2 lembar)
+5. Materai 10.000 (1 lembar)`;
+
+  // Persyaratan yang sedang diinput
+  const persyaratanValue = watch("persyaratan") || "";
 
   // Fetch jenis surat
   const fetchJenisSurat = async () => {
@@ -239,6 +260,11 @@ export default function AdminJenisSuratPage() {
       setSortField(field);
       setSortDirection("asc");
     }
+  };
+
+  // Gunakan template persyaratan
+  const usePersyaratanTemplate = () => {
+    setValue("persyaratan", contohPersyaratan);
   };
 
   // Filter and sort jenis surat
@@ -443,7 +469,7 @@ export default function AdminJenisSuratPage() {
 
       {/* Form Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[700px]">
           <DialogHeader>
             <DialogTitle>
               {selectedJenisSurat ? "Edit Jenis Surat" : "Tambah Jenis Surat"}
@@ -543,16 +569,131 @@ export default function AdminJenisSuratPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="persyaratan">Persyaratan</Label>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="persyaratan">Persyaratan</Label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 rounded-full"
+                        >
+                          <HelpCircle className="h-4 w-4" />
+                          <span className="sr-only">Bantuan</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="max-w-xs">
+                          Tulis persyaratan dengan format bernomor (1., 2., dst)
+                          untuk ditampilkan sebagai daftar pada halaman
+                          pengajuan
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={usePersyaratanTemplate}
+                  >
+                    <List className="mr-1 h-4 w-4" />
+                    Gunakan Template
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setShowPersyaratanPreview(!showPersyaratanPreview)
+                    }
+                  >
+                    <Eye className="mr-1 h-4 w-4" />
+                    {showPersyaratanPreview
+                      ? "Sembunyikan Preview"
+                      : "Lihat Preview"}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-2">
+                <div className="flex items-start gap-2">
+                  <Info className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-amber-800">
+                    <p className="font-medium mb-1">
+                      Panduan Format Persyaratan:
+                    </p>
+                    <ol className="list-decimal pl-5 space-y-1">
+                      <li>Tulis setiap persyaratan pada baris baru</li>
+                      <li>
+                        Awali dengan angka dan titik (contoh: "1. Fotokopi KTP")
+                      </li>
+                      <li>
+                        Persyaratan akan ditampilkan sebagai daftar bernomor
+                        pada halaman pengajuan
+                      </li>
+                      <li>
+                        Jika ada sub-persyaratan, gunakan indentasi (spasi di
+                        awal baris)
+                      </li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+
               <Textarea
                 id="persyaratan"
-                placeholder="Masukkan persyaratan untuk pengajuan surat ini"
+                placeholder="Contoh:
+1. Fotokopi KTP pemohon
+2. Fotokopi Kartu Keluarga (KK)
+3. Surat pengantar dari RT/RW"
                 {...register("persyaratan")}
+                className="font-mono text-sm"
+                rows={8}
               />
-              {errors.persyaratan && (
-                <p className="text-red-500 text-xs">
-                  {errors.persyaratan.message}
-                </p>
+
+              {showPersyaratanPreview && persyaratanValue && (
+                <div className="mt-4 border rounded-md p-4">
+                  <h4 className="text-sm font-medium mb-2">
+                    Preview Persyaratan:
+                  </h4>
+                  <div className="pl-5">
+                    {persyaratanValue.split("\n").map((item, index) => {
+                      // Deteksi apakah baris dimulai dengan angka dan titik (1., 2., dst)
+                      const isNumbered = /^\d+\./.test(item.trim());
+                      // Deteksi apakah baris dimulai dengan spasi (indentasi)
+                      const isIndented = /^\s+/.test(item);
+
+                      if (isNumbered) {
+                        return (
+                          <div
+                            key={index}
+                            className="flex items-baseline gap-2 mb-1"
+                          >
+                            <div className="font-medium">{item.trim()}</div>
+                          </div>
+                        );
+                      } else if (isIndented && item.trim()) {
+                        return (
+                          <div key={index} className="ml-5 mb-1 text-gray-700">
+                            - {item.trim()}
+                          </div>
+                        );
+                      } else if (item.trim()) {
+                        return (
+                          <div key={index} className="mb-1">
+                            {item}
+                          </div>
+                        );
+                      }
+                      return <div key={index} className="h-2"></div>; // Baris kosong
+                    })}
+                  </div>
+                </div>
               )}
             </div>
 

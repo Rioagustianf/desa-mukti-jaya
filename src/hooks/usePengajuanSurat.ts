@@ -5,32 +5,41 @@ import axios from "axios";
 
 export interface PengajuanSuratItem {
   _id: string;
-  jenisSurat: "domisili" | "pindah";
+  jenisSurat:
+    | {
+        _id: string;
+        nama: string;
+        kode: string;
+        tipeForm: string;
+      }
+    | string;
+  kodeSurat?: string;
 
-  // Data pemohon (disederhanakan)
+  // Data pemohon
   nama: string;
   nik: string;
-  tempatLahir: string;
-  tanggalLahir: string;
+  tempatLahir?: string;
+  tanggalLahir?: string;
 
-  // Alamat (disederhanakan)
-  alamat: string;
-  rt: string;
-  rw: string;
-  desa: string;
-  kecamatan: string;
-  kabupaten: string;
+  // Alamat
+  alamat?: string;
+  rt?: string;
+  rw?: string;
+  desa?: string;
+  kecamatan?: string;
+  kabupaten?: string;
 
-  // Kontak (disederhanakan)
+  // Kontak
   teleponWA: string;
 
   // Keperluan
-  keperluan: string;
+  keperluan?: string;
 
   // File uploads
-  fotoKTP: string;
-  fotoKK: string;
-  fotoSuratKeterangan: string;
+  dokumen?: string[];
+  fotoKTP?: string;
+  fotoKK?: string;
+  fotoSuratKeterangan?: string;
 
   // Khusus untuk surat pindah
   alamatTujuan?: string;

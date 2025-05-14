@@ -1,5 +1,7 @@
 "use client";
 
+import { CardFooter } from "@/components/ui/card";
+
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -10,7 +12,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -613,19 +614,34 @@ export default function PengajuanSuratPage() {
                 </div>
               </CardContent>
               <CardFooter className="flex justify-center gap-4 pt-2">
-                <Button onClick={() => router.push("/layanan-administrasi")}>
+                <Button
+                  onClick={() => router.push("/layanan-administrasi/informasi")}
+                >
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Kembali ke Layanan
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => {
-                    setView("status");
+                    // First set the search values
                     setSearchNik(getCurrentNik() || "");
                     setSearchTelepon(getCurrentTeleponWA() || "");
+
+                  
                     setTimeout(() => {
-                      handleSearch();
-                    }, 500);
+                      setView("status");
+                     
+                      if (getCurrentNik() || getCurrentTeleponWA()) {
+                        const identifiers: {
+                          nik?: string;
+                          teleponWA?: string;
+                        } = {};
+                        if (getCurrentNik()) identifiers.nik = getCurrentNik();
+                        if (getCurrentTeleponWA())
+                          identifiers.teleponWA = getCurrentTeleponWA();
+                        fetchUserPengajuan(identifiers);
+                      }
+                    }, 100);
                   }}
                 >
                   <FileCheck className="mr-2 h-4 w-4" />
@@ -688,7 +704,233 @@ export default function PengajuanSuratPage() {
             </div>
           </div>
 
-          {view === "form" ? (
+          {view === "status" ? (
+            <Card className="shadow-md mb-8">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Status Pengajuan Surat</CardTitle>
+                  <CardDescription>
+                    Lihat status pengajuan surat yang telah Anda ajukan
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchUserPengajuan()}
+                  disabled={isLoadingPengajuan}
+                >
+                  <RefreshCw
+                    className={`h-4 w-4 mr-2 ${
+                      isLoadingPengajuan ? "animate-spin" : ""
+                    }`}
+                  />
+                  Refresh
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                  <h3 className="text-sm font-medium mb-3">
+                    Cari Pengajuan Anda
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <Label htmlFor="searchNik" className="text-sm">
+                        NIK
+                      </Label>
+                      <div className="relative mt-1">
+                        <Input
+                          id="searchNik"
+                          placeholder="Masukkan NIK"
+                          value={searchNik}
+                          onChange={(e) => setSearchNik(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="searchTelepon" className="text-sm">
+                        Nomor Telepon
+                      </Label>
+                      <div className="relative mt-1">
+                        <Input
+                          id="searchTelepon"
+                          placeholder="Masukkan nomor telepon"
+                          value={searchTelepon}
+                          onChange={(e) => setSearchTelepon(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleSearch}
+                    disabled={isSearching || (!searchNik && !searchTelepon)}
+                    className="w-full"
+                  >
+                    {isSearching ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Mencari...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="mr-2 h-4 w-4" />
+                        Cari Pengajuan
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {isLoadingPengajuan ? (
+                  <div className="flex justify-center items-center py-12">
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-8 w-8 animate-spin" />
+                      <p>Memuat data pengajuan...</p>
+                    </div>
+                  </div>
+                ) : error ? (
+                  <div className="flex flex-col items-center justify-center py-8">
+                    <AlertTriangle className="h-12 w-12 text-amber-500 mb-4" />
+                    <h3 className="text-lg font-medium mb-2">
+                      Terjadi Kesalahan
+                    </h3>
+                    <p className="text-muted-foreground text-center mb-6">
+                      {error}
+                    </p>
+                    <Button onClick={() => fetchUserPengajuan()}>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Coba Lagi
+                    </Button>
+                  </div>
+                ) : !userPengajuan || userPengajuan.length === 0 ? (
+                  <div className="text-center py-12">
+                    <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium mb-2">
+                      {isSearching
+                        ? "Tidak ditemukan pengajuan"
+                        : "Belum ada pengajuan"}
+                    </h3>
+                    <p className="text-muted-foreground mb-6">
+                      {isSearching
+                        ? "Tidak ditemukan pengajuan dengan data yang Anda masukkan. Pastikan NIK atau nomor telepon sudah benar."
+                        : "Anda belum mengajukan surat administrasi apapun. Silakan buat pengajuan baru."}
+                    </p>
+                    <Button onClick={() => setView("form")}>
+                      <FileText className="mr-2 h-4 w-4" />
+                      Buat Pengajuan Baru
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {userPengajuan
+                      .filter(
+                        (item) =>
+                          item &&
+                          (item.status === "rejected" ||
+                            item.status === "revision")
+                      )
+                      .map((item) => (
+                        <Alert
+                          key={item._id}
+                          variant={
+                            item.status === "rejected"
+                              ? "destructive"
+                              : "default"
+                          }
+                          className={
+                            item.status === "revision"
+                              ? "bg-blue-50 border-blue-200 text-blue-800"
+                              : undefined
+                          }
+                        >
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertTitle>
+                            {item.status === "rejected"
+                              ? "Pengajuan Ditolak"
+                              : "Pengajuan Perlu Revisi"}
+                          </AlertTitle>
+                          <AlertDescription>
+                            <div className="mt-2">
+                              <p className="font-medium">
+                                {item.nama} -{" "}
+                                {item.jenisSurat?.nama || item.kodeSurat} -{" "}
+                                {formatDate(item.tanggalPengajuan)}
+                              </p>
+                              <p className="mt-1">{item.catatan}</p>
+                              <div className="mt-4">
+                                <Button
+                                  size="sm"
+                                  onClick={() => {
+                                    setView("form");
+                                    // Find the jenis surat in the list
+                                    const jenisSurat = jenisSuratList.find(
+                                      (js) =>
+                                        js._id === item.jenisSurat?._id ||
+                                        js.kode === item.kodeSurat
+                                    );
+                                    if (jenisSurat) {
+                                      handleJenisSuratChange(jenisSurat._id);
+                                    }
+                                  }}
+                                >
+                                  Buat Pengajuan Baru
+                                </Button>
+                              </div>
+                            </div>
+                          </AlertDescription>
+                        </Alert>
+                      ))}
+
+                    <div className="divide-y">
+                      {userPengajuan.map(
+                        (item) =>
+                          item && (
+                            <div
+                              key={item._id}
+                              className="py-4 first:pt-0 last:pb-0"
+                            >
+                              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <h3 className="font-medium">{item.nama}</h3>
+                                    <span className="text-sm text-muted-foreground">
+                                      -
+                                    </span>
+                                    <h3 className="font-medium">
+                                      {item.jenisSurat?.nama || item.kodeSurat}
+                                    </h3>
+                                    {getStatusBadge(item.status)}
+                                  </div>
+                                  <p className="text-sm text-muted-foreground mt-1">
+                                    Diajukan pada:{" "}
+                                    {formatDate(item.tanggalPengajuan)}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {item.status === "approved" && (
+                                    <div className="flex items-center gap-1 text-green-600 bg-green-50 px-3 py-1.5 rounded-md text-sm">
+                                      <Clock className="h-4 w-4" />
+                                      <span>
+                                        Anda akan dihubungi untuk pengambilan
+                                        surat
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              {item.catatan && (
+                                <div className="mt-2 text-sm bg-slate-50 p-3 rounded-md">
+                                  <p className="font-medium">Catatan:</p>
+                                  <p>{item.catatan}</p>
+                                </div>
+                              )}
+                            </div>
+                          )
+                      )}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
             <Card className="shadow-md mb-8">
               <CardHeader>
                 <CardTitle>Formulir Pengajuan Surat</CardTitle>
@@ -745,16 +987,17 @@ export default function PengajuanSuratPage() {
                         <p className="text-sm text-blue-700 mb-3">
                           {selectedJenisSurat.deskripsi}
                         </p>
-                        {selectedJenisSurat.persyaratan && (
-                          <div className="mt-2">
-                            <p className="text-sm font-medium text-blue-800">
-                              Persyaratan:
-                            </p>
-                            <p className="text-sm text-blue-700">
-                              {selectedJenisSurat.persyaratan}
-                            </p>
-                          </div>
-                        )}
+                        {selectedJenisSurat.persyaratan &&
+                          typeof selectedJenisSurat.persyaratan === "string" &&
+                          selectedJenisSurat.persyaratan
+                            .split("\n")
+                            .map((item, index) =>
+                              item.trim() ? (
+                                <p key={index} className="pl-1">
+                                  {item.trim()}
+                                </p>
+                              ) : null
+                            )}
                       </div>
                     )}
 
@@ -955,7 +1198,7 @@ export default function PengajuanSuratPage() {
                                 type="button"
                                 variant="outline"
                                 onClick={() =>
-                                  router.push("/layanan-administrasi")
+                                  router.push("/layanan-administrasi/informasi")
                                 }
                               >
                                 <ArrowLeft className="mr-2 h-4 w-4" />
@@ -1341,7 +1584,7 @@ export default function PengajuanSuratPage() {
                                 type="button"
                                 variant="outline"
                                 onClick={() =>
-                                  router.push("/layanan-administrasi")
+                                  router.push("/layanan-administrasi/informasi")
                                 }
                               >
                                 <ArrowLeft className="mr-2 h-4 w-4" />
@@ -1871,227 +2114,6 @@ export default function PengajuanSuratPage() {
                       </>
                     )}
                   </>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className="shadow-md mb-8">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Status Pengajuan Surat</CardTitle>
-                  <CardDescription>
-                    Lihat status pengajuan surat yang telah Anda ajukan
-                  </CardDescription>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fetchUserPengajuan()}
-                  disabled={isLoadingPengajuan}
-                >
-                  <RefreshCw
-                    className={`h-4 w-4 mr-2 ${
-                      isLoadingPengajuan ? "animate-spin" : ""
-                    }`}
-                  />
-                  Refresh
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <div className="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                  <h3 className="text-sm font-medium mb-3">
-                    Cari Pengajuan Anda
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <Label htmlFor="searchNik" className="text-sm">
-                        NIK
-                      </Label>
-                      <div className="relative mt-1">
-                        <Input
-                          id="searchNik"
-                          placeholder="Masukkan NIK"
-                          value={searchNik}
-                          onChange={(e) => setSearchNik(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <Label htmlFor="searchTelepon" className="text-sm">
-                        Nomor Telepon
-                      </Label>
-                      <div className="relative mt-1">
-                        <Input
-                          id="searchTelepon"
-                          placeholder="Masukkan nomor telepon"
-                          value={searchTelepon}
-                          onChange={(e) => setSearchTelepon(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <Button
-                    onClick={handleSearch}
-                    disabled={isSearching || (!searchNik && !searchTelepon)}
-                    className="w-full"
-                  >
-                    {isSearching ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Mencari...
-                      </>
-                    ) : (
-                      <>
-                        <Search className="mr-2 h-4 w-4" />
-                        Cari Pengajuan
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                {isLoadingPengajuan ? (
-                  <div className="flex justify-center items-center py-12">
-                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                      <Loader2 className="h-8 w-8 animate-spin" />
-                      <p>Memuat data pengajuan...</p>
-                    </div>
-                  </div>
-                ) : error ? (
-                  <div className="flex flex-col items-center justify-center py-8">
-                    <AlertTriangle className="h-12 w-12 text-amber-500 mb-4" />
-                    <h3 className="text-lg font-medium mb-2">
-                      Terjadi Kesalahan
-                    </h3>
-                    <p className="text-muted-foreground text-center mb-6">
-                      {error}
-                    </p>
-                    <Button onClick={() => fetchUserPengajuan()}>
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                      Coba Lagi
-                    </Button>
-                  </div>
-                ) : userPengajuan.length === 0 ? (
-                  <div className="text-center py-12">
-                    <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-medium mb-2">
-                      {isSearching
-                        ? "Tidak ditemukan pengajuan"
-                        : "Belum ada pengajuan"}
-                    </h3>
-                    <p className="text-muted-foreground mb-6">
-                      {isSearching
-                        ? "Tidak ditemukan pengajuan dengan data yang Anda masukkan. Pastikan NIK atau nomor telepon sudah benar."
-                        : "Anda belum mengajukan surat administrasi apapun. Silakan buat pengajuan baru."}
-                    </p>
-                    <Button onClick={() => setView("form")}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      Buat Pengajuan Baru
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {userPengajuan
-                      .filter(
-                        (item) =>
-                          item.status === "rejected" ||
-                          item.status === "revision"
-                      )
-                      .map((item) => (
-                        <Alert
-                          key={item._id}
-                          variant={
-                            item.status === "rejected"
-                              ? "destructive"
-                              : "default"
-                          }
-                          className={
-                            item.status === "revision"
-                              ? "bg-blue-50 border-blue-200 text-blue-800"
-                              : undefined
-                          }
-                        >
-                          <AlertTriangle className="h-4 w-4" />
-                          <AlertTitle>
-                            {item.status === "rejected"
-                              ? "Pengajuan Ditolak"
-                              : "Pengajuan Perlu Revisi"}
-                          </AlertTitle>
-                          <AlertDescription>
-                            <div className="mt-2">
-                              <p className="font-medium">
-                                {item.nama} -{" "}
-                                {item.jenisSurat?.nama || item.kodeSurat} -{" "}
-                                {formatDate(item.tanggalPengajuan)}
-                              </p>
-                              <p className="mt-1">{item.catatan}</p>
-                              <div className="mt-4">
-                                <Button
-                                  size="sm"
-                                  onClick={() => {
-                                    setView("form");
-                                    // Find the jenis surat in the list
-                                    const jenisSurat = jenisSuratList.find(
-                                      (js) =>
-                                        js._id === item.jenisSurat?._id ||
-                                        js.kode === item.kodeSurat
-                                    );
-                                    if (jenisSurat) {
-                                      handleJenisSuratChange(jenisSurat._id);
-                                    }
-                                  }}
-                                >
-                                  Buat Pengajuan Baru
-                                </Button>
-                              </div>
-                            </div>
-                          </AlertDescription>
-                        </Alert>
-                      ))}
-
-                    <div className="divide-y">
-                      {userPengajuan.map((item) => (
-                        <div
-                          key={item._id}
-                          className="py-4 first:pt-0 last:pb-0"
-                        >
-                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <h3 className="font-medium">{item.nama}</h3>
-                                <span className="text-sm text-muted-foreground">
-                                  -
-                                </span>
-                                <h3 className="font-medium">
-                                  {item.jenisSurat?.nama || item.kodeSurat}
-                                </h3>
-                                {getStatusBadge(item.status)}
-                              </div>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                Diajukan pada:{" "}
-                                {formatDate(item.tanggalPengajuan)}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {item.status === "approved" && (
-                                <div className="flex items-center gap-1 text-green-600 bg-green-50 px-3 py-1.5 rounded-md text-sm">
-                                  <Clock className="h-4 w-4" />
-                                  <span>
-                                    Anda akan dihubungi untuk pengambilan surat
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          {item.catatan && (
-                            <div className="mt-2 text-sm bg-slate-50 p-3 rounded-md">
-                              <p className="font-medium">Catatan:</p>
-                              <p>{item.catatan}</p>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
                 )}
               </CardContent>
             </Card>

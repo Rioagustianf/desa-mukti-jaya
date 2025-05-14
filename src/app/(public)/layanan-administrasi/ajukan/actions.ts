@@ -79,6 +79,26 @@ export async function createPengajuanSurat(data: any) {
       tanggalPengajuan: new Date(),
     };
 
+    // Jika data memiliki dokumen array dan juga field terpisah, hapus duplikasi
+    if (pengajuanData.dokumen && Array.isArray(pengajuanData.dokumen)) {
+      // Jika ada field terpisah, hapus dari array dokumen untuk menghindari duplikasi
+      if (pengajuanData.fotoKTP) {
+        pengajuanData.dokumen = pengajuanData.dokumen.filter(
+          (url: string) => url !== pengajuanData.fotoKTP
+        );
+      }
+      if (pengajuanData.fotoKK) {
+        pengajuanData.dokumen = pengajuanData.dokumen.filter(
+          (url: string) => url !== pengajuanData.fotoKK
+        );
+      }
+      if (pengajuanData.fotoSuratKeterangan) {
+        pengajuanData.dokumen = pengajuanData.dokumen.filter(
+          (url: string) => url !== pengajuanData.fotoSuratKeterangan
+        );
+      }
+    }
+
     // Simpan ke database
     const pengajuan = await PengajuanSurat.create(pengajuanData);
 
@@ -100,7 +120,7 @@ export async function createPengajuanSurat(data: any) {
   }
 }
 
-// Fungsi untuk mendapatkan pengajuan surat berdasarkan NIK atau nomor telepon
+// Perbaiki fungsi getUserPengajuan untuk menangani error dengan lebih baik
 export async function getUserPengajuan(identifiers?: {
   nik?: string;
   teleponWA?: string;
@@ -127,27 +147,44 @@ export async function getUserPengajuan(identifiers?: {
       }
     }
 
-    console.log("Mencari pengajuan dengan filter:", filter);
+    console.log("Mencari pengajuan dengan filter:", JSON.stringify(filter));
 
-    // Ambil data pengajuan terbaru (maksimal 20)
-    const pengajuan = await PengajuanSurat.find(filter)
-      .populate("jenisSurat", "nama kode tipeForm")
-      .sort({ createdAt: -1 })
-      .limit(20)
-      .lean();
+    try {
+      // Ambil data pengajuan terbaru (maksimal 20)
+      const pengajuan = await PengajuanSurat.find(filter)
+        .populate("jenisSurat", "nama kode tipeForm")
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .lean();
 
-    console.log("Hasil query pengajuan:", pengajuan.length);
+      console.log("Hasil query pengajuan:", pengajuan ? pengajuan.length : 0);
 
-    return {
-      success: true,
-      data: JSON.parse(JSON.stringify(pengajuan)),
-    };
+      // Pastikan pengajuan adalah array sebelum mengembalikan data
+      return {
+        success: true,
+        data: JSON.parse(JSON.stringify(pengajuan || [])),
+      };
+    } catch (populateError) {
+      console.error("Error saat populate jenisSurat:", populateError);
+
+      // Fallback: coba ambil data tanpa populate jika populate gagal
+      const pengajuan = await PengajuanSurat.find(filter)
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .lean();
+
+      return {
+        success: true,
+        data: JSON.parse(JSON.stringify(pengajuan || [])),
+      };
+    }
   } catch (error) {
     console.error("Error fetching user pengajuan:", error);
     return {
       success: false,
       message: "Gagal mengambil data pengajuan",
       error: error instanceof Error ? error.message : String(error),
+      data: [], // Tambahkan data kosong untuk mencegah error saat mengakses data
     };
   }
 }

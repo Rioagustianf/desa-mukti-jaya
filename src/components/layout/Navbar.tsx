@@ -33,11 +33,7 @@ const mainNavItems = [
   },
   {
     title: "Layanan Administrasi",
-    href: "/layanan-administrasi",
-    children: [
-      { title: "Informasi Layanan", href: "/layanan-administrasi/informasi" },
-      { title: "Panduan & Syarat", href: "/layanan-administrasi/panduan" },
-    ],
+    href: "/layanan-administrasi/informasi",
   },
   { title: "Berita & Agenda", href: "/berita-agenda" },
   { title: "Galeri", href: "/galeri" },
