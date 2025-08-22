@@ -27,7 +27,6 @@ export const useKontak = () => {
 
     try {
       const response = await axios.get("/api/kontak");
-      console.log("API Response:", response.data);
 
       if (response.data.success && Array.isArray(response.data.data)) {
         setKontak(response.data.data);
@@ -60,15 +59,11 @@ export const useKontak = () => {
         deskripsi: data.deskripsi ? data.deskripsi.trim() : "",
       };
 
-      console.log("Sending contact data to server:", payload);
-
       const response = await axios.post("/api/kontak", payload, {
         headers: {
           "Content-Type": "application/json",
         },
       });
-
-      console.log("Server response for create:", response.data);
 
       if (response.data.success && response.data.data) {
         setKontak((prev) => [...prev, response.data.data]);
@@ -100,15 +95,11 @@ export const useKontak = () => {
         deskripsi: data.deskripsi ? data.deskripsi.trim() : "",
       };
 
-      console.log(`Updating kontak ${id} with data:`, payload);
-
       const response = await axios.put(`/api/kontak/${id}`, payload, {
         headers: {
           "Content-Type": "application/json",
         },
       });
-
-      console.log("Server response for update:", response.data);
 
       if (response.data.success && response.data.data) {
         setKontak((prev) =>
@@ -130,10 +121,7 @@ export const useKontak = () => {
   // Delete kontak with improved error handling
   const deleteKontak = async (id: string) => {
     try {
-      console.log(`Deleting kontak with id: ${id}`);
-
       const response = await axios.delete(`/api/kontak/${id}`);
-      console.log("Server response for delete:", response.data);
 
       if (response.data.success) {
         setKontak((prev) => prev.filter((item) => item._id !== id));

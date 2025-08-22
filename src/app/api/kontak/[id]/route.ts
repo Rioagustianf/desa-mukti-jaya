@@ -6,111 +6,109 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 
 export async function GET(
-  _: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  await dbConnect();
-  const data = await Kontak.findById(params.id);
-  if (!data)
+  try {
+    await dbConnect();
+    const kontak = await Kontak.findById(params.id);
+
+    if (!kontak) {
+      return NextResponse.json(
+        { success: false, message: "Kontak tidak ditemukan" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true, data: kontak });
+  } catch (error) {
+    console.error("Error fetching kontak:", error);
     return NextResponse.json(
-      { success: false, message: "Not found" },
-      { status: 404 }
+      { success: false, message: "Gagal memuat data kontak" },
+      { status: 500 }
     );
-  return NextResponse.json({ success: true, data });
+  }
 }
 
 export async function PUT(
-  req: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session)
-    return NextResponse.json(
-      { success: false, message: "Unauthorized" },
-      { status: 401 }
-    );
-
   try {
     await dbConnect();
 
-    // Get request body
-    const rawBody = await req.json();
-    console.log("Raw update body:", rawBody);
+    const rawBody = await request.text();
+    let body;
 
-    // Explicitly extract fields
-    const { jenis, nilai, deskripsi } = rawBody;
-
-    // Validate required fields
-    if (!jenis || !nilai) {
-      console.error("Missing required fields for update:", { jenis, nilai });
+    try {
+      body = JSON.parse(rawBody);
+    } catch (parseError) {
       return NextResponse.json(
-        { success: false, message: "Missing required fields" },
+        { success: false, message: "Invalid JSON format" },
         { status: 400 }
       );
     }
 
-    // Create update data with explicit fields
-    const updateData = {
-      jenis,
-      nilai,
-      deskripsi: deskripsi || "",
-    };
+    const { jenis, nilai, deskripsi } = body;
 
-    console.log("Updating kontak with data:", updateData);
+    if (!jenis || !nilai) {
+      return NextResponse.json(
+        { success: false, message: "Jenis dan nilai wajib diisi" },
+        { status: 400 }
+      );
+    }
+
+    const updateData = {
+      jenis: jenis.trim(),
+      nilai: nilai.trim(),
+      deskripsi: deskripsi ? deskripsi.trim() : "",
+    };
 
     const updated = await Kontak.findByIdAndUpdate(params.id, updateData, {
       new: true,
       runValidators: true,
     });
 
-    if (!updated)
+    if (!updated) {
       return NextResponse.json(
-        { success: false, message: "Not found" },
+        { success: false, message: "Kontak tidak ditemukan" },
         { status: 404 }
       );
-
-    console.log("Updated document:", updated);
+    }
 
     return NextResponse.json({ success: true, data: updated });
   } catch (error) {
     console.error("Error updating kontak:", error);
     return NextResponse.json(
-      {
-        success: false,
-        message: "Error updating kontak",
-        error: String(error),
-      },
+      { success: false, message: "Gagal memperbarui kontak" },
       { status: 500 }
     );
   }
 }
 
 export async function DELETE(
-  _: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session)
-    return NextResponse.json(
-      { success: false, message: "Unauthorized" },
-      { status: 401 }
-    );
-
   try {
     await dbConnect();
     const deleted = await Kontak.findByIdAndDelete(params.id);
 
-    if (!deleted)
+    if (!deleted) {
       return NextResponse.json(
-        { success: false, message: "Not found" },
+        { success: false, message: "Kontak tidak ditemukan" },
         { status: 404 }
       );
+    }
 
-    return NextResponse.json({ success: true, data: deleted });
+    return NextResponse.json({
+      success: true,
+      message: "Kontak berhasil dihapus",
+    });
   } catch (error) {
     console.error("Error deleting kontak:", error);
     return NextResponse.json(
-      { success: false, message: "Error deleting kontak" },
+      { success: false, message: "Gagal menghapus kontak" },
       { status: 500 }
     );
   }

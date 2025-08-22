@@ -74,7 +74,7 @@ export async function createPengajuanSurat(data: any) {
     const pengajuanData = {
       ...data,
       jenisSurat: data.jenisSuratId,
-      kodeSurat: jenisSurat.kode,
+      kodeSurat: (jenisSurat as any).kode || "",
       status: "pending",
       tanggalPengajuan: new Date(),
     };
@@ -147,8 +147,6 @@ export async function getUserPengajuan(identifiers?: {
       }
     }
 
-    console.log("Mencari pengajuan dengan filter:", JSON.stringify(filter));
-
     try {
       // Ambil data pengajuan terbaru (maksimal 20)
       const pengajuan = await PengajuanSurat.find(filter)
@@ -156,8 +154,6 @@ export async function getUserPengajuan(identifiers?: {
         .sort({ createdAt: -1 })
         .limit(20)
         .lean();
-
-      console.log("Hasil query pengajuan:", pengajuan ? pengajuan.length : 0);
 
       // Pastikan pengajuan adalah array sebelum mengembalikan data
       return {

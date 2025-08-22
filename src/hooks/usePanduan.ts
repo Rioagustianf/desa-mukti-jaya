@@ -65,7 +65,6 @@ export function usePanduan() {
   ) => {
     setIsSubmitting(true);
     try {
-      console.log("Updating with payload:", payload);
       const response = await axios.put(
         `/api/panduan-administrasi/${id}`,
         payload
@@ -73,11 +72,6 @@ export function usePanduan() {
       await mutate();
       return response.data.data;
     } catch (error: any) {
-      console.error("Error updating panduan:", error);
-      if (error.response) {
-        console.error("Server response:", error.response.data);
-        console.error("Status code:", error.response.status);
-      }
       throw error;
     } finally {
       setIsSubmitting(false);

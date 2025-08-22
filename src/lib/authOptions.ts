@@ -22,12 +22,10 @@ export const authOptions: NextAuthOptions = {
         }
 
         await dbConnect();
-        console.log("CREDENTIALS:", credentials);
 
         const user = await User.findOne({ username: credentials.username });
-        console.log("USER:", user);
         if (!user) {
-          console.log("User tidak ditemukan");
+          console.error("User tidak ditemukan");
           return null;
         }
 
@@ -36,14 +34,11 @@ export const authOptions: NextAuthOptions = {
           user.password
         );
 
-        console.log("IS VALID:", isValid);
-
         if (!isValid) {
-          console.log("Password salah");
+          console.error("Password salah");
           return null;
         }
 
-        console.log("LOGIN BERHASIL");
         return {
           id: user._id.toString(),
           name: user.name,

@@ -131,8 +131,6 @@ export default function AdminPanduanPage() {
 
   async function onSubmit(values: FormValues) {
     try {
-      console.log("Form values being submitted:", values);
-
       if (edit) {
         await updatePanduan(edit._id, values);
         toast.success("Panduan berhasil diperbarui!");
@@ -142,8 +140,6 @@ export default function AdminPanduanPage() {
       }
       setOpen(false);
     } catch (error: any) {
-      console.error("Form submission error:", error);
-
       if (error.response) {
         const status = error.response.status;
         const errorData = error.response.data;

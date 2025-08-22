@@ -6,11 +6,8 @@ import { authOptions } from "@/lib/authOptions";
 
 export async function GET() {
   try {
-    console.log("GET: Connecting to database");
     await dbConnect();
-    console.log("GET: Database connected, fetching data");
     const data = await PanduanAdministrasi.find();
-    console.log(`GET: Found ${data.length} panduan items`);
     return NextResponse.json({ success: true, data });
   } catch (error) {
     console.error("GET Error:", error);
@@ -23,22 +20,17 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    console.log("POST: Checking session");
     const session = await getServerSession(authOptions);
     if (!session) {
-      console.log("POST: No session found - Unauthorized");
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 401 }
       );
     }
 
-    console.log("POST: Connecting to database");
     await dbConnect();
 
-    console.log("POST: Parsing request body");
     const body = await req.json();
-    console.log("POST: Request body:", body);
 
     // Validasi sesuai model
     if (!body.judul) {
@@ -61,9 +53,7 @@ export async function POST(req: NextRequest) {
       layananTerkait: body.layananTerkait || "",
     };
 
-    console.log("POST: Creating panduan");
     const created = await PanduanAdministrasi.create(panduanData);
-    console.log("POST: Panduan created:", created);
 
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch (error: any) {

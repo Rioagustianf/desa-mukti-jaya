@@ -110,13 +110,7 @@ const useKontak = () => {
         throw new Error("Data kontak tidak lengkap");
       }
 
-      // Log the data being sent to verify
-      console.log("Sending data to server:", data);
-
       const response = await axios.post("/api/kontak", data);
-
-      // Log the response for debugging
-      console.log("Server response:", response.data);
 
       if (response.data.success && response.data.data) {
         setKontak((prev) => [...prev, response.data.data]);
@@ -139,13 +133,7 @@ const useKontak = () => {
         throw new Error("Data kontak tidak lengkap");
       }
 
-      // Log the data being sent
-      console.log("Updating kontak with data:", data);
-
       const response = await axios.put(`/api/kontak/${id}`, data);
-
-      // Log the response
-      console.log("Update response:", response.data);
 
       if (response.data.success && response.data.data) {
         setKontak((prev) =>
@@ -291,9 +279,6 @@ export default function AdminKontakPage() {
         nilai: values.nilai,
         deskripsi: values.deskripsi || "",
       };
-
-      // Log the final payload
-      console.log("Form submission payload:", payload);
 
       if (edit) {
         await updateKontak(edit._id, payload);

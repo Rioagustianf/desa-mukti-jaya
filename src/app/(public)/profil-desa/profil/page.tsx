@@ -125,18 +125,30 @@ const getYouTubeVideoId = (url: string): string | null => {
 };
 
 // Komponen terpisah untuk Tabs yang menggunakan useSearchParams
-function TabsWithParams({
-  activeTab,
-  data,
-  sambutan,
-  isLoadingLokasi,
-  mapMarkers,
-  mapCenter,
-  mapZoom,
-  lokasi,
-  openInMaps,
-  youtubeVideoId,
+function TabsWithParams(props: {
+  activeTab: string;
+  data: any;
+  sambutan: any;
+  isLoadingLokasi: boolean;
+  mapMarkers: any[];
+  mapCenter: any;
+  mapZoom: number;
+  lokasi: any;
+  openInMaps: (lat: number, lng: number) => void;
+  youtubeVideoId: string;
 }) {
+  const {
+    activeTab,
+    data,
+    sambutan,
+    isLoadingLokasi,
+    mapMarkers,
+    mapCenter,
+    mapZoom,
+    lokasi,
+    openInMaps,
+    youtubeVideoId,
+  } = props;
   const searchParams = useSearchParams();
   const defaultTab = searchParams.get("tab") || "informasi";
 
@@ -368,7 +380,7 @@ function TabsWithParams({
                   <h3 className="text-lg font-semibold">Daftar Lokasi</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {Array.isArray(lokasi) &&
-                      lokasi.map((item) => (
+                      lokasi.map((item: any, index: number) => (
                         <Card key={item._id} className="overflow-hidden">
                           <CardContent className="p-4">
                             <h4 className="font-bold text-lg mb-2">
@@ -389,8 +401,8 @@ function TabsWithParams({
                                 className="gap-1"
                                 onClick={() =>
                                   openInMaps(
-                                    item.koordinat?.lat,
-                                    item.koordinat?.lng
+                                    item.koordinat?.lat || 0,
+                                    item.koordinat?.lng || 0
                                   )
                                 }
                               >
@@ -467,7 +479,7 @@ export default function ProfilDesaPage() {
                 .map((item) => item.trim());
             } catch (e) {
               // Keep it as string if splitting fails
-              console.log("Could not parse misi string to array:", e);
+              console.error("Could not parse misi string to array:", e);
             }
           }
 

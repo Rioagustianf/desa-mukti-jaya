@@ -24,14 +24,12 @@ export async function POST(req: NextRequest) {
 
     // Get the request body
     const rawBody = await req.json();
-    console.log("Raw request body:", rawBody);
 
     // Explicitly extract each field
     const { jenis, nilai, deskripsi } = rawBody;
 
     // Validate required fields
     if (!jenis || !nilai) {
-      console.error("Missing required fields:", { jenis, nilai });
       return NextResponse.json(
         { success: false, message: "Missing required fields" },
         { status: 400 }
@@ -45,12 +43,8 @@ export async function POST(req: NextRequest) {
       deskripsi: deskripsi || "",
     };
 
-    console.log("Creating Kontak with data:", kontakData);
-
     // Create the document with the explicit data
     const created = await Kontak.create(kontakData);
-
-    console.log("Created document:", created);
 
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch (error) {
