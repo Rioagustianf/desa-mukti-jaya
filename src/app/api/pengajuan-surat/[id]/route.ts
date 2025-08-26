@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import PengajuanSurat from "@/lib/models/PengajuanSurat";
+import JenisSurat from "@/lib/models/JenisSurat";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 
