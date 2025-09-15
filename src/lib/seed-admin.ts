@@ -1,14 +1,21 @@
+import "dotenv/config";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import User from "./models/User";
 
-const MONGODB_URI =
-  process.env.MONGODB_URI ||
-  "mongodb+srv://rioagustian2001:desamuktijaya123@cluster0.sppf0n5.mongodb.net/desa-mukti-jaya?retryWrites=true&w=majority&appName=Cluster0mongodb://localhost:27017/desa-mukti-jaya";
+const MONGODB_URI = process.env.MONGODB_URI as string;
+if (!MONGODB_URI) {
+  throw new Error(
+    "MONGODB_URI tidak terdefinisi. Pastikan variabel lingkungan diset."
+  );
+}
 
 async function main() {
   await mongoose.connect(MONGODB_URI);
-  console.log("Connected to MongoDB");
+  console.log(
+    "Connected to MongoDB",
+    `host=${mongoose.connection.host} db=${mongoose.connection.name}`
+  );
 
   // Hapus user admin lama (jika ada)
   await User.deleteMany({ username: "admin" });

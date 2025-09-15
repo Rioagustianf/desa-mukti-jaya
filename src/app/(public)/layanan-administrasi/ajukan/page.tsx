@@ -37,6 +37,8 @@ import {
   RefreshCw,
   Search,
   FileQuestion,
+  AlertCircle,
+  ListChecks,
 } from "lucide-react";
 import {
   createPengajuanSurat,
@@ -130,6 +132,11 @@ const pengajuanPindahSchema = z.object({
   // File uploads
   dokumen: z.array(z.string()).min(3, "Semua dokumen wajib diupload"),
 });
+
+// Function to parse requirements into a structured format
+const parseRequirements = (persyaratan: string) => {
+  return persyaratan.split("\n").filter((req) => req.trim() !== "");
+};
 
 export default function PengajuanSuratPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -627,10 +634,9 @@ export default function PengajuanSuratPage() {
                     setSearchNik(getCurrentNik() || "");
                     setSearchTelepon(getCurrentTeleponWA() || "");
 
-                  
                     setTimeout(() => {
                       setView("status");
-                     
+
                       if (getCurrentNik() || getCurrentTeleponWA()) {
                         const identifiers: {
                           nik?: string;
@@ -987,17 +993,6 @@ export default function PengajuanSuratPage() {
                         <p className="text-sm text-blue-700 mb-3">
                           {selectedJenisSurat.deskripsi}
                         </p>
-                        {selectedJenisSurat.persyaratan &&
-                          typeof selectedJenisSurat.persyaratan === "string" &&
-                          selectedJenisSurat.persyaratan
-                            .split("\n")
-                            .map((item, index) =>
-                              item.trim() ? (
-                                <p key={index} className="pl-1">
-                                  {item.trim()}
-                                </p>
-                              ) : null
-                            )}
                       </div>
                     )}
 
@@ -1077,6 +1072,30 @@ export default function PengajuanSuratPage() {
                                 </h3>
                               </div>
 
+                              {/* Requirements Section */}
+                              {selectedJenisSurat.persyaratan && (
+                                <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
+                                  <h4 className="font-medium mb-3 flex items-center gap-2 text-amber-800">
+                                    <ListChecks className="h-5 w-5" />
+                                    <span>Persyaratan Dokumen</span>
+                                  </h4>
+                                  <ul className="space-y-2">
+                                    {parseRequirements(
+                                      selectedJenisSurat.persyaratan
+                                    ).map((req, index) => (
+                                      <li
+                                        key={index}
+                                        className="flex items-start gap-2"
+                                      >
+                                        <span className="text-amber-900">
+                                          {req.trim()}
+                                        </span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+
                               <div className="space-y-4">
                                 <div className="bg-blue-50 border border-blue-200 rounded-md p-4 text-blue-800 text-sm">
                                   <p className="font-medium mb-2">
@@ -1085,7 +1104,7 @@ export default function PengajuanSuratPage() {
                                   <ul className="list-disc pl-5 space-y-1">
                                     <li>
                                       Upload dokumen yang diperlukan sesuai
-                                      persyaratan
+                                      persyaratan di atas
                                     </li>
                                     <li>
                                       Pastikan semua dokumen terlihat jelas dan
@@ -1461,6 +1480,30 @@ export default function PengajuanSuratPage() {
                                   Upload Dokumen
                                 </h3>
                               </div>
+
+                              {/* Requirements Section */}
+                              {selectedJenisSurat.persyaratan && (
+                                <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
+                                  <h4 className="font-medium mb-3 flex items-center gap-2 text-amber-800">
+                                    <ListChecks className="h-5 w-5" />
+                                    <span>Persyaratan Dokumen</span>
+                                  </h4>
+                                  <ul className="space-y-2">
+                                    {parseRequirements(
+                                      selectedJenisSurat.persyaratan
+                                    ).map((req, index) => (
+                                      <li
+                                        key={index}
+                                        className="flex items-start gap-2"
+                                      >
+                                        <span className="text-amber-900">
+                                          {req.trim()}
+                                        </span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
 
                               <div className="space-y-4">
                                 <div className="bg-blue-50 border border-blue-200 rounded-md p-4 text-blue-800 text-sm">
@@ -1968,6 +2011,30 @@ export default function PengajuanSuratPage() {
                                   Upload Dokumen
                                 </h3>
                               </div>
+
+                              {/* Requirements Section */}
+                              {selectedJenisSurat.persyaratan && (
+                                <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
+                                  <h4 className="font-medium mb-3 flex items-center gap-2 text-amber-800">
+                                    <ListChecks className="h-5 w-5" />
+                                    <span>Persyaratan Dokumen</span>
+                                  </h4>
+                                  <ul className="space-y-2">
+                                    {parseRequirements(
+                                      selectedJenisSurat.persyaratan
+                                    ).map((req, index) => (
+                                      <li
+                                        key={index}
+                                        className="flex items-start gap-2"
+                                      >
+                                        <span className="text-amber-900">
+                                          {req.trim()}
+                                        </span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
 
                               <div className="space-y-4">
                                 <div className="bg-blue-50 border border-blue-200 rounded-md p-4 text-blue-800 text-sm">

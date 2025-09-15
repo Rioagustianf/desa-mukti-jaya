@@ -254,28 +254,6 @@ function LayananContent() {
                       </div>
                     </div>
 
-                    {item.prosedur && (
-                      <div>
-                        <h3 className="text-lg font-medium mb-2 flex items-center gap-2">
-                          <ListChecks className="h-5 w-5 text-blue-600" />
-                          <span>Prosedur</span>
-                        </h3>
-                        <div className="bg-slate-50 p-4 rounded-md">
-                          {item.prosedur.split("\n").map((step, index) => (
-                            <div
-                              key={index}
-                              className="flex items-start gap-2 mb-2"
-                            >
-                              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-medium text-sm">
-                                {index + 1}
-                              </div>
-                              <span>{step}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {item.jadwalPelayanan && (
                         <div className="bg-slate-50 p-4 rounded-md">
