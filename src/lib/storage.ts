@@ -152,19 +152,73 @@ export function getImageUrl(filename: string): string {
 }
 
 /**
- * Check if image exists in storage
+ * Upload PDF document to Supabase Storage
  */
-export async function imageExists(filename: string): Promise<boolean> {
+export async function uploadPDF(
+  pdfBuffer: Buffer,
+  filename: string,
+  category: string = "letters"
+): Promise<UploadResult> {
   try {
-    const { data, error } = await supabase.storage
+    // Generate folder structure for letters
+    const folderPath = `${category.toLowerCase()}/`;
+
+    // Full path including folder and filename
+    const fullPath = folderPath + filename;
+
+    // Upload to Supabase Storage
+    const { error } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .list("", {
-        search: filename,
+      .upload(fullPath, pdfBuffer, {
+        contentType: "application/pdf",
+        cacheControl: "3600",
+        upsert: false,
       });
 
-    if (error) return false;
-    return data.some((file) => file.name === filename);
-  } catch {
-    return false;
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from(STORAGE_BUCKET)
+      .getPublicUrl(fullPath);
+
+    return {
+      success: true,
+      url: urlData.publicUrl,
+      filename: fullPath, // Return full path including folder
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Upload PDF gagal",
+    };
+  }
+}
+
+/**
+ * Delete PDF document from Supabase Storage
+ */
+export async function deletePDF(filename: string): Promise<DeleteResult> {
+  try {
+    if (!filename) {
+      return { success: false, error: "Filename diperlukan" };
+    }
+
+    const { error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .remove([filename]);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Delete PDF gagal",
+    };
   }
 }

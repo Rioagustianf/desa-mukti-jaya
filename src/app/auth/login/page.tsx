@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Suspense } from "react";
+import Link from "next/link";
 
 const schema = z.object({
   username: z.string().min(2, "Username wajib diisi"),
@@ -37,6 +38,7 @@ function LoginForm() {
   async function onSubmit(data: Inputs) {
     setLoading(true);
     const res = await signIn("credentials", {
+      loginType: "admin",
       ...data,
       redirect: false,
     });
@@ -95,6 +97,16 @@ export default function LoginPage() {
           <Suspense fallback={<LoginFormFallback />}>
             <LoginForm />
           </Suspense>
+
+          <div className="mt-4 text-center">
+            <div className="text-sm text-gray-500 mb-2">Warga desa?</div>
+            <Link
+              href="/auth/user-login"
+              className="text-blue-600 hover:underline text-sm"
+            >
+              Login sebagai Warga
+            </Link>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -119,11 +119,18 @@ export default function Navbar() {
             </NavigationMenuList>
           </NavigationMenu>
 
-          <Link href="/auth/login">
-            <Button className="bg-sky-800 text-white border-white hover:bg-sky-700 hover:text-white">
-              Admin Login
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link href="/auth/user-login">
+              <Button className="bg-transparent border border-white text-white hover:bg-white hover:text-sky-900">
+                Login Warga
+              </Button>
+            </Link>
+            <Link href="/auth/login">
+              <Button className="bg-sky-800 text-white border-white hover:bg-sky-700 hover:text-white">
+                Admin Login
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Mobile Navigation */}
@@ -174,7 +181,15 @@ export default function Navbar() {
                   )}
                 </nav>
               </div>
-              <div className="border-t mt-auto p-6">
+              <div className="border-t mt-auto p-6 space-y-3">
+                <Link href="/auth/user-login" className="w-full">
+                  <Button
+                    variant="outline"
+                    className="w-full border-sky-800 text-sky-800 hover:bg-sky-800 hover:text-white"
+                  >
+                    Login Warga
+                  </Button>
+                </Link>
                 <Link href="/auth/login" className="w-full">
                   <Button className="w-full bg-sky-800 text-white">
                     Admin Login
@@ -190,7 +205,12 @@ export default function Navbar() {
 }
 
 // Komponen ListItem untuk dropdown menu
-const ListItem = ({ title, href }) => {
+interface ListItemProps {
+  title: string;
+  href: string;
+}
+
+const ListItem = ({ title, href }: ListItemProps) => {
   return (
     <li>
       <NavigationMenuLink asChild>
@@ -206,7 +226,12 @@ const ListItem = ({ title, href }) => {
 };
 
 // Replace the MobileAccordionItem with this improved version
-const MobileNavAccordion = ({ title, items }) => {
+interface MobileNavAccordionProps {
+  title: string;
+  items: Array<{ title: string; href: string }>;
+}
+
+const MobileNavAccordion = ({ title, items }: MobileNavAccordionProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -224,7 +249,7 @@ const MobileNavAccordion = ({ title, items }) => {
       </button>
       {isOpen && (
         <div className="ml-4 pl-2 border-l space-y-1">
-          {items.map((item) => (
+          {items.map((item: { title: string; href: string }) => (
             <Link
               key={item.title}
               href={item.href}

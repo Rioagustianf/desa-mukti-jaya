@@ -64,6 +64,8 @@ import {
   X,
   RefreshCw,
   AlertTriangle,
+  FileText as FileTextIcon,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -88,6 +90,7 @@ export default function AdminPengajuanSuratPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
+  const [isGeneratingLetter, setIsGeneratingLetter] = useState(false);
 
   // Prepare filters for the API
   const filters: { status?: string; jenisSurat?: string; search?: string } = {};
@@ -177,6 +180,39 @@ export default function AdminPengajuanSuratPage() {
   const handleImagePreview = (url: string) => {
     setImagePreviewUrl(url);
     setImagePreviewOpen(true);
+  };
+
+  // Generate letter function
+  const handleGenerateLetter = async (item: PengajuanSuratItem) => {
+    if (isGeneratingLetter) return;
+
+    setIsGeneratingLetter(true);
+    try {
+      const response = await fetch(`/api/admin/generate-letter/${item._id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success("Surat berhasil dibuat!");
+        // Refresh the data
+        mutatePengajuanList();
+        if (detailOpen && selectedPengajuanId === item._id) {
+          mutateDetail();
+        }
+      } else {
+        toast.error(result.message || "Gagal membuat surat");
+      }
+    } catch (error) {
+      console.error("Error generating letter:", error);
+      toast.error("Terjadi kesalahan saat membuat surat");
+    } finally {
+      setIsGeneratingLetter(false);
+    }
   };
 
   // Helper function to format date
@@ -404,6 +440,44 @@ export default function AdminPengajuanSuratPage() {
                             <Eye className="h-4 w-4" />
                             <span className="sr-only">Detail</span>
                           </Button>
+
+                          {/* Generate Letter Button - Show for pending/approved items that don't have letters yet */}
+                          {(item.status === "pending" ||
+                            item.status === "approved") &&
+                            !item.letterGenerated && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleGenerateLetter(item)}
+                                disabled={isGeneratingLetter}
+                                className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+                              >
+                                {isGeneratingLetter ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <FileTextIcon className="h-4 w-4" />
+                                )}
+                                <span className="sr-only">Generate Surat</span>
+                              </Button>
+                            )}
+
+                          {/* Download Letter Button - Show for approved items with generated letters */}
+                          {item.status === "approved" &&
+                            item.letterGenerated &&
+                            item.letterUrl && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  window.open(item.letterUrl, "_blank")
+                                }
+                                className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+                              >
+                                <Download className="h-4 w-4" />
+                                <span className="sr-only">Download Surat</span>
+                              </Button>
+                            )}
+
                           <Button
                             variant="outline"
                             size="sm"
@@ -795,6 +869,42 @@ export default function AdminPengajuanSuratPage() {
                 <Button variant="outline" onClick={() => setDetailOpen(false)}>
                   Tutup
                 </Button>
+
+                {/* Generate Letter Button in Detail Dialog */}
+                {(selectedPengajuan.status === "pending" ||
+                  selectedPengajuan.status === "approved") &&
+                  !selectedPengajuan.letterGenerated && (
+                    <Button
+                      onClick={() => {
+                        handleGenerateLetter(selectedPengajuan);
+                      }}
+                      disabled={isGeneratingLetter}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      {isGeneratingLetter ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <FileTextIcon className="mr-2 h-4 w-4" />
+                      )}
+                      Generate Surat
+                    </Button>
+                  )}
+
+                {/* Download Letter Button in Detail Dialog */}
+                {selectedPengajuan.status === "approved" &&
+                  selectedPengajuan.letterGenerated &&
+                  selectedPengajuan.letterUrl && (
+                    <Button
+                      onClick={() =>
+                        window.open(selectedPengajuan.letterUrl, "_blank")
+                      }
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Download Surat
+                    </Button>
+                  )}
+
                 <Button
                   onClick={() => {
                     setDetailOpen(false);

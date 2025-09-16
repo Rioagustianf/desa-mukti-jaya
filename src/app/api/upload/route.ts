@@ -1,6 +1,6 @@
 // src/app/api/upload/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { supabase, STORAGE_BUCKET } from "@/lib/supabase";
+import { createClient } from "@supabase/supabase-js";
 
 export const config = {
   api: {
@@ -8,8 +8,29 @@ export const config = {
   },
 };
 
+// Create Supabase client with service role key for server-side operations
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!; // Using anon key for now
+const STORAGE_BUCKET = "muktijaya";
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  throw new Error("Missing Supabase environment variables");
+}
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
 export async function POST(request: NextRequest) {
   try {
+    // Debug environment variables
+    console.log(
+      "Supabase URL:",
+      process.env.NEXT_PUBLIC_SUPABASE_URL?.slice(0, 20) + "..."
+    );
+    console.log(
+      "Supabase Key exists:",
+      !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    );
+    console.log("Storage bucket:", STORAGE_BUCKET);
     const formData = await request.formData();
     const file = formData.get("foto") as File;
     const category = formData.get("category") as string; // Optional category parameter
@@ -75,39 +96,92 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Upload to Supabase Storage
-    const { error } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .upload(fullPath, buffer, {
-        contentType: file.type,
-        cacheControl: "3600",
-        upsert: false,
-      });
+    // Try Supabase upload first, with fallback to local storage
+    console.log("Attempting to upload to path:", fullPath);
 
-    if (error) {
-      console.error("Supabase upload error:", error);
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Gagal upload ke storage: " + error.message,
-        },
-        { status: 500 }
+    try {
+      // Test Supabase connection first
+      const { data: buckets, error: bucketsError } =
+        await supabase.storage.listBuckets();
+
+      if (bucketsError) {
+        console.error("Supabase connection test failed:", bucketsError);
+        throw new Error("Supabase connection failed");
+      }
+
+      // Check if bucket exists
+      const bucketExists = buckets?.some(
+        (bucket) => bucket.name === STORAGE_BUCKET
       );
+      if (!bucketExists) {
+        console.error(`Storage bucket '${STORAGE_BUCKET}' does not exist`);
+        throw new Error(`Storage bucket '${STORAGE_BUCKET}' does not exist`);
+      }
+
+      // Upload to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .upload(fullPath, buffer, {
+          contentType: file.type,
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (error) {
+        console.error("Supabase upload error:", error);
+        throw error;
+      }
+
+      console.log("Upload successful:", data);
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from(STORAGE_BUCKET)
+        .getPublicUrl(fullPath);
+
+      // Return success response with image URL
+      return NextResponse.json({
+        success: true,
+        url: urlData.publicUrl,
+        filename: fullPath,
+        folderPath: folderPath,
+        originalName: file.name,
+        provider: "supabase",
+      });
+    } catch (supabaseError) {
+      console.warn(
+        "Supabase upload failed, falling back to local storage:",
+        supabaseError
+      );
+
+      // Fallback: Save to local public directory
+      const fs = require("fs").promises;
+      const path = require("path");
+
+      const publicDir = path.join(process.cwd(), "public", "uploads");
+      const localPath = path.join(publicDir, fullPath);
+      const localDir = path.dirname(localPath);
+
+      // Ensure directory exists
+      await fs.mkdir(localDir, { recursive: true });
+
+      // Save file locally
+      await fs.writeFile(localPath, buffer);
+
+      const publicUrl = `/uploads/${fullPath}`;
+
+      console.log("Local upload successful:", publicUrl);
+
+      // Return success response with local URL
+      return NextResponse.json({
+        success: true,
+        url: publicUrl,
+        filename: fullPath,
+        folderPath: folderPath,
+        originalName: file.name,
+        provider: "local",
+      });
     }
-
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from(STORAGE_BUCKET)
-      .getPublicUrl(fullPath);
-
-    // Return success response with image URL
-    return NextResponse.json({
-      success: true,
-      url: urlData.publicUrl,
-      filename: fullPath,
-      folderPath: folderPath,
-      originalName: file.name,
-    });
   } catch (error) {
     console.error("Upload error:", error);
     return NextResponse.json(

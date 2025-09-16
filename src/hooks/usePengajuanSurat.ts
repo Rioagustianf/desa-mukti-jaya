@@ -55,6 +55,13 @@ export interface PengajuanSuratItem {
   tanggalPengajuan: Date | string;
   tanggalUpdate?: Date | string;
   catatan?: string;
+
+  // Generated letter information
+  letterGenerated?: boolean;
+  letterUrl?: string;
+  letterGeneratedAt?: Date | string;
+  letterGeneratedBy?: string;
+
   createdAt: Date | string;
   updatedAt: Date | string;
 }

@@ -1,8 +1,8 @@
-import { type NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import JenisSurat from "@/lib/models/JenisSurat";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
+import { NextRequest, NextResponse } from "next/server";
 
 // GET: Mendapatkan detail jenis surat berdasarkan ID
 export async function GET(
@@ -10,10 +10,13 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Await params before accessing properties (Next.js 15 requirement)
+    const { id } = await params;
+
     await dbConnect();
 
     // Ambil data jenis surat berdasarkan ID
-    const jenisSurat = await JenisSurat.findById(params.id).lean();
+    const jenisSurat = await JenisSurat.findById(id).lean();
 
     if (!jenisSurat) {
       return NextResponse.json(
@@ -41,6 +44,9 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Await params before accessing properties (Next.js 15 requirement)
+    const { id } = await params;
+
     // Pastikan user sudah login dan memiliki akses admin
     const session = await getServerSession(authOptions);
     if (!session) {
@@ -64,7 +70,7 @@ export async function PUT(
     }
 
     // Update data jenis surat
-    const jenisSurat = await JenisSurat.findByIdAndUpdate(params.id, body, {
+    const jenisSurat = await JenisSurat.findByIdAndUpdate(id, body, {
       new: true,
     }).lean();
 
@@ -94,6 +100,9 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Await params before accessing properties (Next.js 15 requirement)
+    const { id } = await params;
+
     // Pastikan user sudah login dan memiliki akses admin
     const session = await getServerSession(authOptions);
     if (!session) {
@@ -106,7 +115,7 @@ export async function DELETE(
     await dbConnect();
 
     // Hapus data jenis surat
-    const jenisSurat = await JenisSurat.findByIdAndDelete(params.id).lean();
+    const jenisSurat = await JenisSurat.findByIdAndDelete(id).lean();
 
     if (!jenisSurat) {
       return NextResponse.json(
