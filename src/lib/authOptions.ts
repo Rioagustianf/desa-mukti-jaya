@@ -119,116 +119,43 @@ export const authOptions: NextAuthOptions = {
             role: "resident",
           });
 
-          // If user doesn't exist, try to create from pengajuan data
+          // If user doesn't exist, they need to submit a letter application first
           if (!user) {
-            // Double-check to prevent race conditions
-            const existingUser = await User.findOne({
-              nik: credentials.nik,
-              role: "resident",
-            });
-
-            if (existingUser) {
-              user = existingUser;
-            } else {
-              const pengajuan = await PengajuanSurat.findOne({
-                nik: credentials.nik,
-                teleponWA: credentials.teleponWA,
-              }).sort({ createdAt: -1 }); // Get the latest submission
-
-              if (pengajuan) {
-                console.log("Pengajuan data:", {
-                  nama: pengajuan.nama,
-                  nik: pengajuan.nik,
-                  teleponWA: pengajuan.teleponWA,
-                });
-              }
-
-              if (!pengajuan) {
-                console.error(
-                  "Tidak ditemukan pengajuan dengan NIK dan telepon WA tersebut"
-                );
-                return null;
-              }
-
-              // Create user account from pengajuan data
-              try {
-                const userData = {
-                  nik: credentials.nik,
-                  teleponWA: credentials.teleponWA,
-                  name: pengajuan.nama,
-                  role: "resident" as const,
-                  isAutoCreated: true,
-                  hasSetPassword: false,
-                  isVerified: false,
-                  createdAt: new Date(),
-                  updatedAt: new Date(),
-                };
-
-                // Use create method instead of insertOne to properly handle sparse indexes
-                user = await User.create(userData);
-
-                console.log(
-                  "User account created automatically from pengajuan data"
-                );
-              } catch (error: any) {
-                console.error("Gagal membuat user account:", error);
-
-                // If it's a duplicate key error for username, try to find existing user
-                if (error?.code === 11000 && error?.keyPattern?.username) {
-                  console.log(
-                    "Duplicate username detected, checking for existing user with NIK"
-                  );
-                  user = await User.findOne({
-                    nik: credentials.nik,
-                    role: "resident",
-                  });
-
-                  if (user) {
-                    console.log("Found existing user with matching NIK");
-                  } else {
-                    console.error(
-                      "No existing user found with NIK after duplicate error"
-                    );
-                    return null;
-                  }
-                } else {
-                  return null;
-                }
-              }
-            }
-          } else {
-            // User exists, verify phone number
-            const userPhone = extractUserPhoneNumber(user);
-
-            if (!userPhone) {
-              console.error(
-                "Could not extract phone number from user document"
-              );
-              return null;
-            }
-
-            const normalizedInputPhone = normalizePhoneNumber(
-              credentials.teleponWA
+            console.error(
+              "User account not found. Please submit a letter application first to create your account."
             );
-            const normalizedUserPhone = normalizePhoneNumber(userPhone);
+            return null;
+          }
 
-            if (normalizedUserPhone !== normalizedInputPhone) {
-              console.error(
-                `Phone number mismatch. Expected: ${normalizedUserPhone}, Received: ${normalizedInputPhone}`
-              );
+          // User exists, verify phone number
+          const userPhone = extractUserPhoneNumber(user);
+
+          if (!userPhone) {
+            console.error("Could not extract phone number from user document");
+            return null;
+          }
+
+          const normalizedInputPhone = normalizePhoneNumber(
+            credentials.teleponWA
+          );
+          const normalizedUserPhone = normalizePhoneNumber(userPhone);
+
+          if (normalizedUserPhone !== normalizedInputPhone) {
+            console.error(
+              `Phone number mismatch. Expected: ${normalizedUserPhone}, Received: ${normalizedInputPhone}`
+            );
+            return null;
+          }
+
+          // If password is provided, verify it
+          if (credentials.password && user.password) {
+            const isValid = await bcrypt.compare(
+              credentials.password,
+              user.password
+            );
+            if (!isValid) {
+              console.error("Password salah");
               return null;
-            }
-
-            // If password is provided, verify it
-            if (credentials.password && user.password) {
-              const isValid = await bcrypt.compare(
-                credentials.password,
-                user.password
-              );
-              if (!isValid) {
-                console.error("Password salah");
-                return null;
-              }
             }
           }
 

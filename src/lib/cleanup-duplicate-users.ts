@@ -104,7 +104,7 @@ async function cleanupDuplicateUsers() {
 }
 
 // Run cleanup if this file is executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (require.main === module) {
   cleanupDuplicateUsers().catch((err) => {
     console.error("Script error:", err);
     process.exit(1);

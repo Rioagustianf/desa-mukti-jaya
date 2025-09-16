@@ -11,7 +11,7 @@
     "seed:admin": "tsx src/lib/seed-admin.ts",
     "seed:surat": "tsx src/lib/seed-jenis-surat.ts",
     "seed:layanan": "tsx src/lib/seed-layanan.ts",
-    "cleanup:users": "tsx src/lib/cleanup-duplicate-users.ts"
+    "test:user-flow": "tsx src/lib/test-user-flow.ts"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.2",
