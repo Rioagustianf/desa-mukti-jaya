@@ -71,5 +71,18 @@ const UserSchema = new Schema<IUser>(
 // Compound index for resident authentication
 UserSchema.index({ nik: 1, teleponWA: 1 });
 
+// Pre-save middleware to handle username for resident users
+UserSchema.pre("save", function (next) {
+  // If this is a resident user and username is null/undefined, remove it completely
+  if (
+    this.role === "resident" &&
+    (this.username === null || this.username === undefined)
+  ) {
+    this.username = undefined;
+    this.$unset("username");
+  }
+  next();
+});
+
 export default mongoose.models.User ||
   mongoose.model<IUser>("User", UserSchema);

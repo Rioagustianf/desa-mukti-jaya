@@ -10,7 +10,8 @@
     "lint": "next lint",
     "seed:admin": "tsx src/lib/seed-admin.ts",
     "seed:surat": "tsx src/lib/seed-jenis-surat.ts",
-    "seed:layanan": "tsx src/lib/seed-layanan.ts"
+    "seed:layanan": "tsx src/lib/seed-layanan.ts",
+    "cleanup:users": "tsx src/lib/cleanup-duplicate-users.ts"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.2",
