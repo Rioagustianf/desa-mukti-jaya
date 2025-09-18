@@ -44,6 +44,9 @@ export async function POST(_: Request, { params }: { params: { id: string } }) {
     await dbConnect();
 
     // Get the pengajuan data
+    // Ensure JenisSurat schema is registered (avoid serverless tree-shaking)
+    const JenisSuratModel = JenisSurat;
+
     const pengajuan = (await PengajuanSurat.findById(id)
       .populate("jenisSurat", "nama kode")
       .lean()) as any;
