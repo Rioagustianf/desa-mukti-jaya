@@ -66,7 +66,11 @@ function Kop(p: CommonProps) {
   return (
     <>
       <View style={base.header}>
-        <Image style={base.logo} src={p.logoDataUri} />
+        {p.logoDataUri ? (
+          <Image style={base.logo} src={p.logoDataUri} />
+        ) : (
+          <View style={base.logo} />
+        )}
         <View style={base.headerCenter}>
           <Text style={base.kab}>{p.kabupaten}</Text>
           <Text style={base.kec}>{p.kecamatan}</Text>

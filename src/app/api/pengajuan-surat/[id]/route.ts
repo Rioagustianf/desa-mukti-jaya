@@ -7,13 +7,14 @@ import { authOptions } from "@/lib/authOptions";
 
 export async function GET(
   _: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } } | { params: Promise<{ id: string }> }
 ) {
   try {
     await dbConnect();
 
     // Ambil data pengajuan surat berdasarkan ID
-    const pengajuan = await PengajuanSurat.findById(params.id)
+    const { id } = (await (context as any).params) as { id: string };
+    const pengajuan = await PengajuanSurat.findById(id)
       .populate("jenisSurat", "nama kode tipeForm")
       .lean();
 
@@ -39,7 +40,7 @@ export async function GET(
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } } | { params: Promise<{ id: string }> }
 ) {
   try {
     // Pastikan user sudah login dan memiliki akses admin
@@ -57,8 +58,9 @@ export async function PUT(
     const body = await req.json();
 
     // Update data pengajuan surat
+    const { id } = (await (context as any).params) as { id: string };
     const pengajuan = await PengajuanSurat.findByIdAndUpdate(
-      params.id,
+      id,
       {
         ...body,
         tanggalUpdate: new Date(),
@@ -94,7 +96,7 @@ export async function PUT(
 
 export async function DELETE(
   _: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } } | { params: Promise<{ id: string }> }
 ) {
   try {
     // Pastikan user sudah login dan memiliki akses admin
@@ -109,7 +111,8 @@ export async function DELETE(
     await dbConnect();
 
     // Hapus data pengajuan surat
-    const pengajuan = await PengajuanSurat.findByIdAndDelete(params.id).lean();
+    const { id } = (await (context as any).params) as { id: string };
+    const pengajuan = await PengajuanSurat.findByIdAndDelete(id).lean();
 
     if (!pengajuan) {
       return NextResponse.json(

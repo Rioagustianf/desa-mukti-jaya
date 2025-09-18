@@ -53,7 +53,12 @@ export async function POST(_: Request, { params }: { params: { id: string } }) {
 
     // Siapkan asset logo dari public/logo.png -> data URI
     const logoPath = path.join(process.cwd(), "public", "logo.png");
-    const logoDataURI = fileToDataURI(logoPath, "image/png");
+    let logoDataURI = "";
+    try {
+      logoDataURI = fileToDataURI(logoPath, "image/png");
+    } catch (_) {
+      logoDataURI = ""; // biarkan kosong, komponen akan handle
+    }
 
     // Tanda tangan digital jika ada
     let ttdDataURI = "";
@@ -81,9 +86,11 @@ export async function POST(_: Request, { params }: { params: { id: string } }) {
     const nomorSuratFinal = (pengajuan as any).nomorSurat || autoNomor;
 
     // Render PDF dengan React PDF
-    const LetterComp = getLetterComponentByCode(
-      pengajuan.jenisSurat?.kode || "SKD"
-    );
+    const kode = (pengajuan.jenisSurat?.kode || "SKD").toString().toUpperCase();
+    const judul = pengajuan.jenisSurat?.nama || "Surat Keterangan";
+    const LetterComp = (
+      await import("@/lib/pdfTemplates/letters")
+    ).getLetterComponentByCode(kode);
     const doc = React.createElement(LetterComp as any, {
       logoDataUri: logoDataURI,
       kabupaten: "PEMERINTAH KABUPATEN BANYUASIN",
@@ -91,21 +98,41 @@ export async function POST(_: Request, { params }: { params: { id: string } }) {
       desa: "KEPALA DESA MUKTI JAYA",
       alamatDesa:
         "Desa Mukti Jaya Jalur 10, Kecamatan Muara Telang, Kabupaten Banyuasin",
-      judulSurat: pengajuan.jenisSurat?.nama || "Surat Keterangan",
+      judulSurat: judul,
       nomorSurat: nomorSuratFinal,
-      nama: pengajuan.nama || "-",
-      nik: pengajuan.nik || "-",
-      alamat: pengajuan.alamat || "-",
+      nama: (pengajuan.nama || "").toString(),
+      nik: (pengajuan.nik || "").toString(),
+      alamat: (pengajuan.alamat || "").toString(),
       keperluan: pengajuan.keperluan || "-",
       tanggal: formattedDate,
       jabatanPenandatangan: penandatangan?.jabatan || "KEPALA DESA",
       namaPenandatangan: penandatangan?.nama || "",
       ttdDataUri: ttdDataURI || undefined,
     });
-    const uint8 = await (pdf(
-      doc as any
-    ).toBuffer() as unknown as Promise<Uint8Array>);
-    const pdfBuffer = Buffer.from(uint8);
+    let pdfBuffer: Buffer;
+    try {
+      const uint8 = await (pdf(
+        doc as any
+      ).toBuffer() as unknown as Promise<Uint8Array>);
+      pdfBuffer = Buffer.from(uint8);
+    } catch (err) {
+      // Fallback ke jsPDF jika React PDF gagal render
+      const dataUri = (await import("@/lib/pdfGenerator")).generateSuratPDF({
+        ...pengajuan,
+        nomorSurat: nomorSuratFinal,
+        logoDataUri: logoDataURI,
+        kabupaten: "PEMERINTAH KABUPATEN BANYUASIN",
+        kecamatan: "KECAMATAN MUARA TELANG",
+        desa: "KEPALA DESA MUKTI JAYA",
+        alamatDesa:
+          "Desa Mukti Jaya Jalur 10, Kecamatan Muara Telang, Kabupaten Banyuasin",
+        tanggalCetak: formattedDate,
+        jabatanPenandatangan: penandatangan?.jabatan || "KEPALA DESA",
+        namaPenandatangan: penandatangan?.nama || "",
+        ttdDataUri: ttdDataURI || undefined,
+      } as any);
+      pdfBuffer = Buffer.from((dataUri as string).split(",")[1], "base64");
+    }
     (pengajuan as any).__autoNomor = autoNomor;
 
     // Generate filename
