@@ -72,14 +72,19 @@ const UserSchema = new Schema<IUser>(
 UserSchema.index({ nik: 1, teleponWA: 1 });
 
 // Ensure username is unique only when it exists (avoid null/undefined dup errors)
-// Note: requires dropping any existing { username: 1 } unique index in the DB
-UserSchema.index(
-  { username: 1 },
-  {
-    unique: true,
-    partialFilterExpression: { username: { $type: "string" } },
-  }
-);
+// Guard against duplicate index definition in serverless/HMR environments
+const hasUsernameIndex = UserSchema.indexes().some(([fields]) => {
+  return (fields as any).username === 1;
+});
+if (!hasUsernameIndex) {
+  UserSchema.index(
+    { username: 1 },
+    {
+      unique: true,
+      partialFilterExpression: { username: { $type: "string" } },
+    }
+  );
+}
 
 export default mongoose.models.User ||
   mongoose.model<IUser>("User", UserSchema);
