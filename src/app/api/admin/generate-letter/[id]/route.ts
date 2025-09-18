@@ -5,11 +5,15 @@ import PengajuanSurat from "@/lib/models/PengajuanSurat";
 import JenisSurat from "@/lib/models/JenisSurat";
 import path from "path";
 import fs from "fs";
-import puppeteer from "puppeteer";
+import puppeteer from "puppeteer-core";
+import chromium from "@sparticuz/chromium";
 import Pengurus from "@/lib/models/Pengurus";
 import { fileToDataURI, urlToDataURI } from "@/lib/pdfmeGenerator";
 import { uploadPDF } from "@/lib/storage";
 import dbConnect from "@/lib/db";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 // HTML template loading helper
 function getHtmlTemplatePath(kodeSurat: string): string {
   const preferred = path.join(
@@ -111,7 +115,13 @@ export async function POST(_: Request, { params }: { params: { id: string } }) {
       .replace(/{{namaPenandatangan}}/g, penandatangan?.nama || "")
       .replace(/{{ttdImage}}/g, ttdDataURI || "");
 
-    const browser = await puppeteer.launch({ headless: true });
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: chromium.args,
+      executablePath:
+        process.env.CHROME_EXECUTABLE_PATH || (await chromium.executablePath()),
+      defaultViewport: chromium.defaultViewport,
+    });
     const page = await browser.newPage();
     // Auto-generate nomor surat jika belum ada
     const tahun = new Date().getFullYear();
