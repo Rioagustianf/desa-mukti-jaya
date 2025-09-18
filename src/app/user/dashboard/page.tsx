@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -244,11 +244,13 @@ export default function UserDashboard() {
                   Profil
                 </Button>
               </Link>
-              <Link href="/auth/user-login">
-                <Button variant="ghost" size="sm">
-                  Logout
-                </Button>
-              </Link>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => signOut({ callbackUrl: "/" })}
+              >
+                Logout
+              </Button>
             </div>
           </div>
         </div>

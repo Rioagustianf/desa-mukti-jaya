@@ -62,6 +62,7 @@ const schema = z.object({
   nama: z.string().min(1, "Nama wajib diisi"),
   jabatan: z.string().min(1, "Jabatan wajib diisi"),
   foto: z.string().optional(),
+  ttdDigital: z.string().optional(),
   telepon: z.string().optional(),
   email: z
     .string()
@@ -93,6 +94,9 @@ export default function AdminPengurusPage() {
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingTTD, setUploadingTTD] = useState(false);
+  const [selectedTTDFile, setSelectedTTDFile] = useState<File | null>(null);
+  const ttdInputRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -106,6 +110,7 @@ export default function AdminPengurusPage() {
   });
 
   const currentPhotoUrl = watch("foto");
+  const currentTTDUrl = watch("ttdDigital");
 
   function handleEdit(item: Pengurus) {
     setEdit(item);
@@ -114,6 +119,7 @@ export default function AdminPengurusPage() {
     setValue("nama", formData.nama);
     setValue("jabatan", formData.jabatan);
     setValue("foto", formData.foto);
+    setValue("ttdDigital", (formData as any).ttdDigital || "");
     setValue("telepon", formData.telepon);
     setValue("email", formData.email);
     setValue("deskripsi", formData.deskripsi);
@@ -128,6 +134,7 @@ export default function AdminPengurusPage() {
       nama: "",
       jabatan: "",
       foto: "",
+      ttdDigital: "",
       telepon: "",
       email: "",
       deskripsi: "",
@@ -189,6 +196,44 @@ export default function AdminPengurusPage() {
     }
   }
 
+  function handleTTDSelection(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!e.target.files || e.target.files.length === 0) return;
+
+    const file = e.target.files[0];
+    if (!file.type.startsWith("image/")) {
+      toast.error("Hanya file gambar yang diperbolehkan");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Ukuran file tidak boleh lebih dari 5MB");
+      return;
+    }
+
+    setSelectedTTDFile(file);
+  }
+
+  async function uploadSelectedTTDFile() {
+    if (!selectedTTDFile) return null;
+    try {
+      setUploadingTTD(true);
+      const url = await uploadImage(selectedTTDFile);
+      return url;
+    } catch (error) {
+      toast.error("Gagal mengupload tanda tangan digital");
+      console.error(error);
+      return null;
+    } finally {
+      setUploadingTTD(false);
+    }
+  }
+
+  function triggerTTDInput() {
+    if (ttdInputRef.current) {
+      ttdInputRef.current.click();
+    }
+  }
+
   function triggerFileInput() {
     if (fileInputRef.current) {
       fileInputRef.current.click();
@@ -212,9 +257,19 @@ export default function AdminPengurusPage() {
         }
       }
 
+      let finalTTDUrl = values.ttdDigital;
+      if (selectedTTDFile) {
+        finalTTDUrl = await uploadSelectedTTDFile();
+        if (!finalTTDUrl) {
+          toast.error("Gagal mengupload tanda tangan digital");
+          return;
+        }
+      }
+
       const pengurusData = {
         ...values,
         foto: finalImageUrl,
+        ttdDigital: finalTTDUrl,
       };
 
       if (edit) {
@@ -313,7 +368,7 @@ export default function AdminPengurusPage() {
                           alt={item.nama}
                           fill
                           className="object-cover cursor-pointer"
-                          onClick={() => setViewImage(item.foto)}
+                          onClick={() => setViewImage(item.foto || null)}
                           onError={(e) => {
                             e.currentTarget.src =
                               "/placeholder.svg?height=192&width=384";
@@ -355,7 +410,7 @@ export default function AdminPengurusPage() {
                                 Hapus
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                onClick={() => setViewImage(item.foto)}
+                                onClick={() => setViewImage(item.foto || null)}
                               >
                                 <Eye className="mr-2 h-4 w-4" />
                                 Lihat Foto
@@ -457,7 +512,7 @@ export default function AdminPengurusPage() {
                                 alt={item.nama}
                                 fill
                                 className="object-cover cursor-pointer"
-                                onClick={() => setViewImage(item.foto)}
+                                onClick={() => setViewImage(item.foto || null)}
                                 onError={(e) => {
                                   e.currentTarget.src =
                                     "/placeholder.svg?height=48&width=48";
@@ -489,7 +544,7 @@ export default function AdminPengurusPage() {
                                 size="sm"
                                 variant="ghost"
                                 className="h-8 w-8 p-0"
-                                onClick={() => setViewImage(item.foto)}
+                                onClick={() => setViewImage(item.foto || null)}
                               >
                                 <Eye className="h-4 w-4" />
                                 <span className="sr-only">Lihat</span>
@@ -695,6 +750,55 @@ export default function AdminPengurusPage() {
                         <p>Belum ada foto</p>
                       </div>
                     )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Tanda Tangan Digital (PNG Transparan)
+              </label>
+              <div>
+                <input type="hidden" {...register("ttdDigital")} />
+                <input
+                  type="file"
+                  ref={ttdInputRef}
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handleTTDSelection}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={triggerTTDInput}
+                  disabled={uploadingTTD}
+                >
+                  {uploadingTTD ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Upload size={16} />
+                  )}
+                  {selectedTTDFile
+                    ? selectedTTDFile.name
+                    : uploadingTTD
+                    ? "Mengupload..."
+                    : "Pilih File TTD (PNG)"}
+                </Button>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Disarankan PNG transparan. Maks 5MB.
+                </p>
+              </div>
+              <div className="mt-2">
+                {currentTTDUrl && (
+                  <div className="relative h-24 w-40 mx-auto rounded-md overflow-hidden border bg-muted">
+                    <NextImage
+                      src={currentTTDUrl}
+                      alt="TTD Preview"
+                      fill
+                      className="object-contain"
+                    />
                   </div>
                 )}
               </div>

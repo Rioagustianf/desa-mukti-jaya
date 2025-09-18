@@ -3,9 +3,25 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import PengajuanSurat from "@/lib/models/PengajuanSurat";
 import JenisSurat from "@/lib/models/JenisSurat";
-import { generateSuratPDF } from "@/lib/pdfGenerator";
+import path from "path";
+import fs from "fs";
+import puppeteer from "puppeteer";
+import Pengurus from "@/lib/models/Pengurus";
+import { fileToDataURI, urlToDataURI } from "@/lib/pdfmeGenerator";
 import { uploadPDF } from "@/lib/storage";
 import dbConnect from "@/lib/db";
+// HTML template loading helper
+function getHtmlTemplatePath(kodeSurat: string): string {
+  const preferred = path.join(
+    process.cwd(),
+    "templates",
+    "html",
+    `${kodeSurat.toUpperCase()}.html`
+  );
+  if (fs.existsSync(preferred)) return preferred;
+  // Fallback ke template generik jika belum ada template khusus
+  return path.join(process.cwd(), "templates", "html", "SKD.html");
+}
 
 export async function POST(_: Request, { params }: { params: { id: string } }) {
   try {
@@ -35,12 +51,83 @@ export async function POST(_: Request, { params }: { params: { id: string } }) {
       );
     }
 
-    // Generate the PDF
-    const pdfDataUri = generateSuratPDF(pengajuan);
+    // Ambil penandatangan: Kepala Desa
+    const penandatangan: any = await Pengurus.findOne({
+      jabatan: /kepala desa/i,
+    }).lean();
 
-    // Convert data URI to buffer
-    const base64Data = pdfDataUri.split(",")[1];
-    const pdfBuffer = Buffer.from(base64Data, "base64");
+    // Siapkan asset logo dari public/logo.png -> data URI
+    const logoPath = path.join(process.cwd(), "public", "logo.png");
+    const logoDataURI = fileToDataURI(logoPath, "image/png");
+
+    // Tanda tangan digital jika ada
+    let ttdDataURI = "";
+    if (penandatangan?.ttdDigital) {
+      try {
+        ttdDataURI = await urlToDataURI(penandatangan.ttdDigital);
+      } catch (_) {
+        ttdDataURI = "";
+      }
+    }
+
+    // Render HTML to PDF using Puppeteer
+    const templatePath = getHtmlTemplatePath(pengajuan.jenisSurat.kode);
+    const formattedDate = new Date(
+      pengajuan.tanggalPengajuan
+    ).toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    });
+    const html = await (
+      await import("fs/promises")
+    ).readFile(templatePath, "utf-8");
+    const populated = html
+      .replace(/{{logo}}/g, logoDataURI)
+      .replace(/{{kabupaten}}/g, "PEMERINTAH KABUPATEN BANYUASIN")
+      .replace(/{{kecamatan}}/g, "KECAMATAN MUARA TELANG")
+      .replace(/{{desa}}/g, "KEPALA DESA MUKTI JAYA")
+      .replace(
+        /{{alamatDesa}}/g,
+        "Desa Mukti Jaya Jalur 10, Kecamatan Muara Telang, Kabupaten Banyuasin"
+      )
+      .replace(/{{nama}}/g, pengajuan.nama || "-")
+      .replace(/{{nik}}/g, pengajuan.nik || "-")
+      .replace(/{{teleponWA}}/g, pengajuan.teleponWA || "-")
+      .replace(/{{alamat}}/g, pengajuan.alamat || "-")
+      .replace(/{{tanggalPengajuan}}/g, formattedDate)
+      .replace(/{{jenisSurat}}/g, pengajuan.jenisSurat?.nama || "-")
+      .replace(/{{judulSurat}}/g, pengajuan.jenisSurat?.nama || "-")
+      .replace(/{{kodeSurat}}/g, pengajuan.jenisSurat?.kode || "-")
+      .replace(/{{keperluan}}/g, pengajuan.keperluan || "-")
+      .replace(
+        /{{nomorSurat}}/g,
+        (pengajuan as any).nomorSurat || "{{AUTO_NOMOR}}"
+      )
+      .replace(
+        /{{jabatanPenandatangan}}/g,
+        penandatangan?.jabatan || "KEPALA DESA"
+      )
+      .replace(/{{namaPenandatangan}}/g, penandatangan?.nama || "")
+      .replace(/{{ttdImage}}/g, ttdDataURI || "");
+
+    const browser = await puppeteer.launch({ headless: true });
+    const page = await browser.newPage();
+    // Auto-generate nomor surat jika belum ada
+    const tahun = new Date().getFullYear();
+    const autoNomor = `${String(Date.now()).slice(-4)}/${
+      pengajuan.jenisSurat.kode
+    }/DS/${tahun}`;
+    const finalHtml = populated.replace(/{{AUTO_NOMOR}}/g, autoNomor);
+
+    await page.setContent(finalHtml, { waitUntil: "networkidle0" });
+    const pdfUint8 = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      margin: { top: "20mm", right: "15mm", bottom: "20mm", left: "15mm" },
+    });
+    await browser.close();
+    const pdfBuffer = Buffer.from(pdfUint8);
 
     // Generate filename
     const filename = `surat_${pengajuan.jenisSurat.kode}_${
@@ -66,6 +153,7 @@ export async function POST(_: Request, { params }: { params: { id: string } }) {
       letterUrl: uploadResult.url,
       letterGeneratedAt: new Date(),
       letterGeneratedBy: session.user.email || session.user.name,
+      nomorSurat: (pengajuan as any).nomorSurat || autoNomor,
       status: "approved", // Automatically approve when letter is generated
     });
 

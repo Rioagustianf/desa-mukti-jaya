@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
+import { useSession } from "next-auth/react";
 import {
   Card,
   CardContent,
@@ -77,6 +79,7 @@ export default function PengajuanSuratPage() {
   }>({});
 
   const router = useRouter();
+  const { data: session } = useSession();
 
   // Default form schema that allows additional fields
   const defaultSchema = z
@@ -95,6 +98,18 @@ export default function PengajuanSuratPage() {
 
   const { handleSubmit, reset, setValue, watch } = form;
   const watchedValues = watch();
+
+  // Prefill identity fields when warga is logged in
+  useEffect(() => {
+    if (session?.user) {
+      if (session.user.name)
+        setValue("nama", session.user.name, { shouldValidate: true });
+      if (session.user.nik)
+        setValue("nik", session.user.nik, { shouldValidate: true });
+      if (session.user.teleponWA)
+        setValue("teleponWA", session.user.teleponWA, { shouldValidate: true });
+    }
+  }, [session, setValue]);
 
   // Fetch jenis surat
   useEffect(() => {
@@ -180,12 +195,50 @@ export default function PengajuanSuratPage() {
         const result = await createPengajuanSurat(combinedData);
 
         if (result.success) {
-          setIsSuccess(true);
-          setLastSubmittedData({
-            nik: combinedData.nik,
-            teleponWA: combinedData.teleponWA,
-          });
-          toast.success("Pengajuan surat berhasil dikirim!");
+          // Auto login warga setelah pengajuan berhasil
+          try {
+            const res = await signIn("credentials", {
+              loginType: "user",
+              nik: combinedData.nik,
+              teleponWA: combinedData.teleponWA,
+              redirect: false,
+            });
+
+            if (res?.error) {
+              // Jika auto-login gagal, tetap tampilkan halaman sukses
+              setIsSuccess(true);
+              setLastSubmittedData({
+                nik: combinedData.nik,
+                teleponWA: combinedData.teleponWA,
+              });
+              toast.success("Pengajuan surat berhasil dikirim!");
+            } else {
+              const session = await getSession();
+              if (session?.user) {
+                toast.success("Pengajuan berhasil. Anda telah otomatis masuk.");
+                // Arahkan ke dashboard warga
+                router.push("/user/dashboard");
+              } else {
+                setIsSuccess(true);
+                setLastSubmittedData({
+                  nik: combinedData.nik,
+                  teleponWA: combinedData.teleponWA,
+                });
+                toast.success(
+                  "Pengajuan berhasil. Silakan login untuk melanjutkan."
+                );
+              }
+            }
+          } catch (e) {
+            // Fallback ke halaman sukses jika ada error tak terduga saat login
+            setIsSuccess(true);
+            setLastSubmittedData({
+              nik: combinedData.nik,
+              teleponWA: combinedData.teleponWA,
+            });
+            toast.success("Pengajuan surat berhasil dikirim!");
+          }
+
           reset();
           setDocumentValues({});
         } else {
@@ -220,12 +273,46 @@ export default function PengajuanSuratPage() {
       try {
         const result = await createPengajuanSurat(combinedData);
         if (result.success) {
-          setIsSuccess(true);
-          setLastSubmittedData({
-            nik: combinedData.nik,
-            teleponWA: combinedData.teleponWA,
-          });
-          toast.success("Pengajuan surat berhasil dikirim!");
+          // Auto login warga setelah pengajuan berhasil (fallback path)
+          try {
+            const res = await signIn("credentials", {
+              loginType: "user",
+              nik: combinedData.nik,
+              teleponWA: combinedData.teleponWA,
+              redirect: false,
+            });
+
+            if (res?.error) {
+              setIsSuccess(true);
+              setLastSubmittedData({
+                nik: combinedData.nik,
+                teleponWA: combinedData.teleponWA,
+              });
+              toast.success("Pengajuan surat berhasil dikirim!");
+            } else {
+              const session = await getSession();
+              if (session?.user) {
+                toast.success("Pengajuan berhasil. Anda telah otomatis masuk.");
+                router.push("/user/dashboard");
+              } else {
+                setIsSuccess(true);
+                setLastSubmittedData({
+                  nik: combinedData.nik,
+                  teleponWA: combinedData.teleponWA,
+                });
+                toast.success(
+                  "Pengajuan berhasil. Silakan login untuk melanjutkan."
+                );
+              }
+            }
+          } catch (e) {
+            setIsSuccess(true);
+            setLastSubmittedData({
+              nik: combinedData.nik,
+              teleponWA: combinedData.teleponWA,
+            });
+            toast.success("Pengajuan surat berhasil dikirim!");
+          }
           reset();
           setDocumentValues({});
         } else {

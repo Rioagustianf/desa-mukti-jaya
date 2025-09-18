@@ -19,6 +19,8 @@ const PengurusSchema = new Schema(
     nama: { type: String, required: true },
     jabatan: { type: String, required: true },
     foto: { type: String },
+    // URL tanda tangan digital (transparent PNG)
+    ttdDigital: { type: String },
 
     kontak: {
       type: [KontakSchema],

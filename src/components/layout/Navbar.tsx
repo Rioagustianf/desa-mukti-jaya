@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import logo from "../../../public/logo.png";
 import Image from "next/image";
+import { useSession, signOut } from "next-auth/react";
 
 // Updated navigation items based on the use case diagram
 const mainNavItems = [
@@ -42,6 +43,7 @@ const mainNavItems = [
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
+  const { data: session } = useSession();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -120,16 +122,42 @@ export default function Navbar() {
           </NavigationMenu>
 
           <div className="flex gap-2">
-            <Link href="/auth/user-login">
-              <Button className="bg-transparent border border-white text-white hover:bg-white hover:text-sky-900">
-                Login Warga
-              </Button>
-            </Link>
-            <Link href="/auth/login">
-              <Button className="bg-sky-800 text-white border-white hover:bg-sky-700 hover:text-white">
-                Admin Login
-              </Button>
-            </Link>
+            {session?.user ? (
+              <>
+                {(session.user.role === "resident" ||
+                  session.user.role === "user") && (
+                  <Link href="/user/dashboard">
+                    <Button className="bg-transparent border border-white text-white hover:bg-white hover:text-sky-900">
+                      Dashboard Warga
+                    </Button>
+                  </Link>
+                )}
+                <Link href="/user/profile">
+                  <Button className="bg-transparent border border-white text-white hover:bg-white hover:text-sky-900">
+                    Profil
+                  </Button>
+                </Link>
+                <Button
+                  onClick={() => signOut({ callbackUrl: "/" })}
+                  className="bg-sky-800 text-white border-white hover:bg-sky-700 hover:text-white"
+                >
+                  Logout
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link href="/auth/user-login">
+                  <Button className="bg-transparent border border-white text-white hover:bg-white hover:text-sky-900">
+                    Login Warga
+                  </Button>
+                </Link>
+                <Link href="/auth/login">
+                  <Button className="bg-sky-800 text-white border-white hover:bg-sky-700 hover:text-white">
+                    Admin Login
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
 
@@ -182,19 +210,51 @@ export default function Navbar() {
                 </nav>
               </div>
               <div className="border-t mt-auto p-6 space-y-3">
-                <Link href="/auth/user-login" className="w-full">
-                  <Button
-                    variant="outline"
-                    className="w-full border-sky-800 text-sky-800 hover:bg-sky-800 hover:text-white"
-                  >
-                    Login Warga
-                  </Button>
-                </Link>
-                <Link href="/auth/login" className="w-full">
-                  <Button className="w-full bg-sky-800 text-white">
-                    Admin Login
-                  </Button>
-                </Link>
+                {session?.user ? (
+                  <>
+                    {(session.user.role === "resident" ||
+                      session.user.role === "user") && (
+                      <Link href="/user/dashboard" className="w-full">
+                        <Button
+                          variant="outline"
+                          className="w-full border-sky-800 text-sky-800 hover:bg-sky-800 hover:text-white"
+                        >
+                          Dashboard Warga
+                        </Button>
+                      </Link>
+                    )}
+                    <Link href="/user/profile" className="w-full">
+                      <Button
+                        variant="outline"
+                        className="w-full border-sky-800 text-sky-800 hover:bg-sky-800 hover:text-white"
+                      >
+                        Profil
+                      </Button>
+                    </Link>
+                    <Button
+                      onClick={() => signOut({ callbackUrl: "/" })}
+                      className="w-full bg-sky-800 text-white"
+                    >
+                      Logout
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Link href="/auth/user-login" className="w-full">
+                      <Button
+                        variant="outline"
+                        className="w-full border-sky-800 text-sky-800 hover:bg-sky-800 hover:text-white"
+                      >
+                        Login Warga
+                      </Button>
+                    </Link>
+                    <Link href="/auth/login" className="w-full">
+                      <Button className="w-full bg-sky-800 text-white">
+                        Admin Login
+                      </Button>
+                    </Link>
+                  </>
+                )}
               </div>
             </SheetContent>
           </Sheet>

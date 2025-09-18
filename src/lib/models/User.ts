@@ -22,8 +22,8 @@ const UserSchema = new Schema<IUser>(
     username: {
       type: String,
       sparse: true,
-      unique: true,
       required: false,
+      // unique handled via partial index below to avoid null duplicate conflicts
     },
     password: {
       type: String,
@@ -32,7 +32,7 @@ const UserSchema = new Schema<IUser>(
     name: { type: String, required: true },
     role: {
       type: String,
-      enum: ["admin", "user", "resident"],
+      enum: ["admin", "resident"],
       default: "admin",
       required: true,
     },
@@ -71,18 +71,15 @@ const UserSchema = new Schema<IUser>(
 // Compound index for resident authentication
 UserSchema.index({ nik: 1, teleponWA: 1 });
 
-// Pre-save middleware to handle username for resident users
-UserSchema.pre("save", function (next) {
-  // If this is a resident user and username is null/undefined, remove it completely
-  if (
-    this.role === "resident" &&
-    (this.username === null || this.username === undefined)
-  ) {
-    this.username = undefined;
-    this.$unset("username");
+// Ensure username is unique only when it exists (avoid null/undefined dup errors)
+// Note: requires dropping any existing { username: 1 } unique index in the DB
+UserSchema.index(
+  { username: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { username: { $type: "string" } },
   }
-  next();
-});
+);
 
 export default mongoose.models.User ||
   mongoose.model<IUser>("User", UserSchema);

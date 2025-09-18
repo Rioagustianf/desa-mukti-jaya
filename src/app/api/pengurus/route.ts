@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
       nama: body.nama,
       jabatan: body.jabatan,
       foto: body.foto || "",
+      ttdDigital: body.ttdDigital || "",
       kontak: Array.isArray(body.kontak) ? body.kontak : [],
       deskripsi: body.deskripsi || "",
     };

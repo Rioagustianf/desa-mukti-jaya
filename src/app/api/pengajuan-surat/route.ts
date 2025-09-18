@@ -91,12 +91,20 @@ export async function POST(request: Request) {
 
     // Automatically create or update user account for the applicant
     if (body.nik && body.teleponWA && body.nama) {
+      console.log(`🔍 Processing user account for:`, {
+        nik: body.nik,
+        teleponWA: body.teleponWA,
+        nama: body.nama
+      });
+      
       try {
         // Check if user already exists
         let existingUser = await User.findOne({
           nik: body.nik,
           role: "resident",
         });
+
+        console.log(`🔍 Existing user search result:`, existingUser ? 'Found' : 'Not found');
 
         if (!existingUser) {
           // Create new user account
@@ -110,9 +118,10 @@ export async function POST(request: Request) {
             isVerified: false,
           };
 
-          await User.create(userData);
+          console.log(`👤 Creating new user with data:`, userData);
+          const newUser = await User.create(userData);
           console.log(
-            `✅ User account created automatically for NIK: ${body.nik}`
+            `✅ User account created successfully with ID: ${newUser._id} for NIK: ${body.nik}`
           );
         } else {
           // Update existing user's phone number and name if needed

@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import dbConnect from "@/lib/db";
 import PengajuanSurat from "@/lib/models/PengajuanSurat";
 import JenisSurat from "@/lib/models/JenisSurat";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/authOptions";
 
 // Fungsi untuk mendapatkan semua jenis surat yang aktif
 export async function getJenisSurat() {
@@ -70,9 +72,19 @@ export async function createPengajuanSurat(data: any) {
       };
     }
 
-    // Tambahkan status dan tanggal pengajuan
+    // Jika user sudah login sebagai warga, paksa gunakan data dari sesi
+    const session = await getServerSession(authOptions);
+
+    const sessionNik = session?.user?.nik;
+    const sessionTelepon = session?.user?.teleponWA;
+    const sessionNama = session?.user?.name;
+
+    // Tambahkan status dan tanggal pengajuan, override identitas bila ada sesi
     const pengajuanData = {
       ...data,
+      nama: sessionNama || data?.nama,
+      nik: sessionNik || data?.nik,
+      teleponWA: sessionTelepon || data?.teleponWA,
       jenisSurat: data.jenisSuratId,
       kodeSurat: (jenisSurat as any).kode || "",
       status: "pending",

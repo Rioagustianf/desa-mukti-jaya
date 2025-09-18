@@ -12,6 +12,7 @@ export interface Pengurus {
   nama: string;
   jabatan: string;
   foto?: string;
+  ttdDigital?: string;
   kontak: Kontak[];
   deskripsi?: string;
 }
@@ -98,6 +99,7 @@ export function usePengurus() {
       nama: formData.nama,
       jabatan: formData.jabatan,
       foto: formData.foto || "",
+      ttdDigital: formData.ttdDigital || "",
       kontak: kontak, // Make sure this is properly structured as an array of objects
       deskripsi: formData.deskripsi || "",
     };
@@ -113,6 +115,7 @@ export function usePengurus() {
       nama: pengurus.nama,
       jabatan: pengurus.jabatan,
       foto: pengurus.foto || "",
+      ttdDigital: (pengurus as any).ttdDigital || "",
       telepon,
       email,
       deskripsi: pengurus.deskripsi || "",

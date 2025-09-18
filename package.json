@@ -11,7 +11,8 @@
     "seed:admin": "tsx src/lib/seed-admin.ts",
     "seed:surat": "tsx src/lib/seed-jenis-surat.ts",
     "seed:layanan": "tsx src/lib/seed-layanan.ts",
-    "test:user-flow": "tsx src/lib/test-user-flow.ts"
+    "test:user-flow": "tsx src/lib/test-user-flow.ts",
+    "diagnose:user": "tsx src/lib/diagnose-user-issue.ts"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.2",
@@ -44,6 +45,7 @@
     "dotenv": "^16.5.0",
     "framer-motion": "^12.10.0",
     "jspdf": "^2.5.2",
+    "puppeteer": "^23.6.0",
     "leaflet": "^1.9.4",
     "leaflet-defaulticon-compatibility": "^0.1.2",
     "lucide-react": "^0.503.0",

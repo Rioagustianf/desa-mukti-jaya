@@ -114,17 +114,70 @@ export const authOptions: NextAuthOptions = {
           }
 
           // Check if user already exists
+          console.log(`🔍 Login attempt for NIK: ${credentials.nik}, Phone: ${credentials.teleponWA}`);
+          
           let user = await User.findOne({
             nik: credentials.nik,
             role: "resident",
           });
 
+          console.log(`🔍 User search result:`, user ? {
+            id: user._id,
+            name: user.name,
+            nik: user.nik,
+            teleponWA: user.teleponWA,
+            role: user.role
+          } : 'User not found');
+
           // If user doesn't exist, they need to submit a letter application first
           if (!user) {
-            console.error(
-              "User account not found. Please submit a letter application first to create your account."
-            );
-            return null;
+            // Let's also check if there are any users with this NIK but different role
+            const anyUserWithNIK = await User.findOne({ nik: credentials.nik });
+            console.log(`🔍 Any user with NIK ${credentials.nik}:`, anyUserWithNIK ? {
+              role: anyUserWithNIK.role,
+              name: anyUserWithNIK.name
+            } : 'None found');
+            
+            // Fallback: Check if there's a letter application and create user
+            console.log(`🔍 Checking for letter applications...`);
+            const pengajuan = await PengajuanSurat.findOne({
+              nik: credentials.nik,
+              teleponWA: credentials.teleponWA,
+            }).sort({ createdAt: -1 });
+            
+            if (pengajuan) {
+              console.log(`🔍 Found letter application, creating user account...`);
+              try {
+                const userData = {
+                  nik: credentials.nik,
+                  teleponWA: credentials.teleponWA,
+                  name: pengajuan.nama,
+                  role: "resident" as const,
+                  isAutoCreated: true,
+                  hasSetPassword: false,
+                  isVerified: false,
+                };
+                
+                user = await User.create(userData);
+                console.log(`✅ User account created during login for NIK: ${credentials.nik}`);
+              } catch (createError: any) {
+                console.error('Error creating user during login:', createError);
+                if (createError?.code === 11000) {
+                  // Duplicate key, try to find the user again
+                  user = await User.findOne({
+                    nik: credentials.nik,
+                    role: "resident",
+                  });
+                }
+              }
+            }
+            
+            if (!user) {
+              console.error(
+                "User account not found. Please submit a letter application first to create your account."
+              );
+              return null;
+            }
           }
 
           // User exists, verify phone number

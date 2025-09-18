@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{judulSurat}}</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 20mm 15mm;
+      }
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        color: #000;
+      }
+      .header {
+        display: grid;
+        grid-template-columns: 90px 1fr;
+        column-gap: 12px;
+        align-items: center;
+      }
+      .header img {
+        width: 90px;
+        height: auto;
+      }
+      .header-center {
+        text-align: center;
+      }
+      .kab {
+        font-weight: 700;
+        font-size: 16px;
+        text-transform: uppercase;
+      }
+      .kec {
+        font-weight: 700;
+        font-size: 14px;
+        text-transform: uppercase;
+        margin-top: 2px;
+      }
+      .desa {
+        font-weight: 800;
+        font-size: 18px;
+        text-transform: uppercase;
+        margin-top: 2px;
+      }
+      .alamat {
+        font-size: 11px;
+        margin-top: 4px;
+      }
+      .divider {
+        border-top: 2px solid #000;
+        margin: 8px 0 0 0;
+      }
+      .title {
+        text-align: center;
+        margin-top: 18px;
+        font-weight: 700;
+        font-size: 14px;
+        text-transform: uppercase;
+      }
+      .nomor {
+        text-align: center;
+        font-size: 12px;
+        margin-top: 6px;
+      }
+      .content {
+        margin-top: 16px;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      .pair {
+        margin: 6px 0;
+      }
+      .ttd {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 260px;
+        margin-top: 28px;
+      }
+      .ttd .box {
+        text-align: center;
+      }
+      .ttd .ttd-img {
+        width: 160px;
+        height: 90px;
+        object-fit: contain;
+        margin: 6px auto;
+        display: block;
+      }
+      .name {
+        font-weight: 700;
+        text-transform: uppercase;
+        margin-top: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div><img src="{{logo}}" alt="logo" /></div>
+      <div class="header-center">
+        <div class="kab">{{kabupaten}}</div>
+        <div class="kec">{{kecamatan}}</div>
+        <div class="desa">{{desa}}</div>
+        <div class="alamat">{{alamatDesa}}</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <div class="title">{{judulSurat}}</div>
+    <div class="nomor">Nomor: {{nomorSurat}}</div>
+
+    <div class="content">
+      <p>
+        Yang bertanda tangan di bawah ini, Kepala Desa Mukti Jaya, dengan ini
+        menerangkan bahwa:
+      </p>
+      <div class="pair">Nama: <strong>{{nama}}</strong></div>
+      <div class="pair">NIK: <strong>{{nik}}</strong></div>
+      <div class="pair">Alamat: <strong>{{alamat}}</strong></div>
+      <div class="pair">Keperluan: <strong>{{keperluan}}</strong></div>
+      <p>
+        Demikian surat keterangan ini dibuat dengan sebenarnya untuk
+        dipergunakan sebagaimana mestinya.
+      </p>
+    </div>
+
+    <div class="ttd">
+      <div></div>
+      <div class="box">
+        <div>Mukti Jaya, {{tanggalPengajuan}}</div>
+        <div>{{jabatanPenandatangan}}</div>
+        <img class="ttd-img" src="{{ttdImage}}" alt="ttd" />
+        <div class="name">{{namaPenandatangan}}</div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -135,6 +135,9 @@ const PengajuanSuratSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    nomorSurat: {
+      type: String,
+    },
     letterUrl: {
       type: String,
     },
