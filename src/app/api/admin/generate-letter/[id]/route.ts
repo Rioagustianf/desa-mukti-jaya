@@ -118,12 +118,21 @@ export async function POST(_: Request, { params }: { params: { id: string } }) {
       .replace(/{{namaPenandatangan}}/g, penandatangan?.nama || "")
       .replace(/{{ttdImage}}/g, ttdDataURI || "");
 
+    const executablePath =
+      process.env.CHROME_EXECUTABLE_PATH || (await chromium.executablePath());
     const browser = await puppeteer.launch({
-      headless: true,
-      args: chromium.args,
-      executablePath:
-        process.env.CHROME_EXECUTABLE_PATH || (await chromium.executablePath()),
+      headless: chromium.headless,
+      args: [
+        ...chromium.args,
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--single-process",
+      ],
+      executablePath,
       defaultViewport: chromium.defaultViewport,
+      ignoreHTTPSErrors: true,
     });
     const page = await browser.newPage();
     // Auto-generate nomor surat jika belum ada
