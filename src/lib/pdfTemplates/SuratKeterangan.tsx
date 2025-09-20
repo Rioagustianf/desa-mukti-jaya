@@ -81,17 +81,17 @@ export const SuratKeterangan = (p: SuratProps) => (
 
       <View style={styles.content}>
         <Text>
-          Yang bertanda tangan di bawah ini, Kepala Desa Mukti Jaya, dengan ini
-          menerangkan bahwa:
+          Yang bertanda tangan di bawah ini, Kepala Desa Mukti Jaya, Kecamatan{" "}
+          {p.kecamatan}, Kabupaten {p.kabupaten}, dengan ini menerangkan bahwa:
         </Text>
         <Text style={styles.pair}>
-          Nama: <Text style={styles.bold}>{p.nama}</Text>
+          Nama Lengkap: <Text style={styles.bold}>{p.nama}</Text>
         </Text>
         <Text style={styles.pair}>
           NIK: <Text style={styles.bold}>{p.nik}</Text>
         </Text>
         <Text style={styles.pair}>
-          Alamat: <Text style={styles.bold}>{p.alamat}</Text>
+          Alamat Lengkap: <Text style={styles.bold}>{p.alamat}</Text>
         </Text>
         {p.keperluan ? (
           <Text style={styles.pair}>
@@ -99,8 +99,23 @@ export const SuratKeterangan = (p: SuratProps) => (
           </Text>
         ) : null}
         <Text style={{ marginTop: 10 }}>
-          Demikian surat keterangan ini dibuat dengan sebenarnya untuk
-          dipergunakan sebagaimana mestinya.
+          Adalah benar-benar penduduk Desa Mukti Jaya yang berdomisili di alamat
+          tersebut di atas. Yang bersangkutan dikenal sebagai warga yang:
+        </Text>
+        <Text style={styles.pair}>1. Berkelakuan baik dan bermoral</Text>
+        <Text style={styles.pair}>
+          2. Tidak pernah terlibat dalam tindakan kriminal
+        </Text>
+        <Text style={styles.pair}>3. Aktif dalam kegiatan kemasyarakatan</Text>
+        <Text style={styles.pair}>4. Taat pada peraturan yang berlaku</Text>
+        <Text style={{ marginTop: 10 }}>
+          Surat keterangan ini dibuat atas permintaan yang bersangkutan untuk{" "}
+          {p.keperluan || "keperluan administrasi"} dan untuk dipergunakan
+          sebagaimana mestinya.
+        </Text>
+        <Text style={{ marginTop: 8 }}>
+          Demikian surat keterangan ini dibuat dengan sebenar-benarnya
+          berdasarkan data yang ada dan dapat dipertanggungjawabkan.
         </Text>
       </View>
 

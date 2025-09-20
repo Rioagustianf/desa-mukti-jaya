@@ -18,14 +18,18 @@ export interface Pengurus {
 }
 
 export function usePengurus() {
-  const { data, error, mutate } = useSWR<Pengurus[]>("/api/pengurus", (url) =>
-    axios.get(url).then((res) => res.data.data)
+  const { data, error, mutate } = useSWR<Pengurus[]>(
+    "/api/pengurus",
+    (url: string) => axios.get(url).then((res) => res.data.data)
   );
 
-  const uploadImage = async (file: File) => {
+  const uploadImage = async (file: File, category?: string) => {
     try {
       const formData = new FormData();
       formData.append("foto", file);
+      if (category) {
+        formData.append("category", category);
+      }
 
       const response = await axios.post("/api/upload", formData, {
         headers: {

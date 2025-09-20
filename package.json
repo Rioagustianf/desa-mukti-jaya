@@ -45,7 +45,6 @@
     "dayjs": "^1.11.13",
     "dotenv": "^16.5.0",
     "framer-motion": "^12.10.0",
-    "jspdf": "^2.5.2",
     "leaflet": "^1.9.4",
     "leaflet-defaulticon-compatibility": "^0.1.2",
     "lucide-react": "^0.503.0",

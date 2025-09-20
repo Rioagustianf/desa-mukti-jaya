@@ -176,6 +176,7 @@ export async function uploadPDF(
       });
 
     if (error) {
+      console.error("PDF upload error:", error);
       return { success: false, error: error.message };
     }
 
@@ -190,6 +191,7 @@ export async function uploadPDF(
       filename: fullPath, // Return full path including folder
     };
   } catch (error) {
+    console.error("PDF upload exception:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Upload PDF gagal",

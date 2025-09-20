@@ -5,8 +5,7 @@ import PengajuanSurat from "@/lib/models/PengajuanSurat";
 import JenisSurat from "@/lib/models/JenisSurat";
 import path from "path";
 import React from "react";
-import { pdf } from "@react-pdf/renderer";
-import { getLetterComponentByCode } from "@/lib/pdfTemplates/letters";
+import { renderToBuffer } from "@react-pdf/renderer";
 import Pengurus from "@/lib/models/Pengurus";
 import { fileToDataURI, urlToDataURI } from "@/lib/pdfmeGenerator";
 import { uploadPDF } from "@/lib/storage";
@@ -51,12 +50,15 @@ export async function POST(_: Request, { params }: { params: { id: string } }) {
       jabatan: /kepala desa/i,
     }).lean();
 
+    console.log("Penandatangan found:", penandatangan);
+
     // Siapkan asset logo dari public/logo.png -> data URI
     const logoPath = path.join(process.cwd(), "public", "logo.png");
     let logoDataURI = "";
     try {
       logoDataURI = fileToDataURI(logoPath, "image/png");
-    } catch (_) {
+    } catch (error) {
+      console.error("Error converting logo to data URI:", error);
       logoDataURI = ""; // biarkan kosong, komponen akan handle
     }
 
@@ -64,10 +66,22 @@ export async function POST(_: Request, { params }: { params: { id: string } }) {
     let ttdDataURI = "";
     if (penandatangan?.ttdDigital) {
       try {
+        console.log(
+          "Converting TTD URL to data URI:",
+          penandatangan.ttdDigital
+        );
         ttdDataURI = await urlToDataURI(penandatangan.ttdDigital);
-      } catch (_) {
+        console.log(
+          "Successfully converted TTD to data URI, length:",
+          ttdDataURI.length
+        );
+      } catch (error) {
+        console.error("Error converting TTD to data URI:", error);
+        // Even if signature conversion fails, we'll still generate the letter
         ttdDataURI = "";
       }
+    } else {
+      console.log("No digital signature found for penandatangan");
     }
 
     // Format tanggal untuk tampilan
@@ -91,7 +105,9 @@ export async function POST(_: Request, { params }: { params: { id: string } }) {
     const LetterComp = (
       await import("@/lib/pdfTemplates/letters")
     ).getLetterComponentByCode(kode);
-    const doc = React.createElement(LetterComp as any, {
+
+    // Build complete props object with all specific fields
+    const letterProps = {
       logoDataUri: logoDataURI,
       kabupaten: "PEMERINTAH KABUPATEN BANYUASIN",
       kecamatan: "KECAMATAN MUARA TELANG",
@@ -108,31 +124,56 @@ export async function POST(_: Request, { params }: { params: { id: string } }) {
       jabatanPenandatangan: penandatangan?.jabatan || "KEPALA DESA",
       namaPenandatangan: penandatangan?.nama || "",
       ttdDataUri: ttdDataURI || undefined,
-    });
-    let pdfBuffer: Buffer;
-    try {
-      const uint8 = await (pdf(
-        doc as any
-      ).toBuffer() as unknown as Promise<Uint8Array>);
-      pdfBuffer = Buffer.from(uint8);
-    } catch (err) {
-      // Fallback ke jsPDF jika React PDF gagal render
-      const dataUri = (await import("@/lib/pdfGenerator")).generateSuratPDF({
-        ...pengajuan,
-        nomorSurat: nomorSuratFinal,
-        logoDataUri: logoDataURI,
-        kabupaten: "PEMERINTAH KABUPATEN BANYUASIN",
-        kecamatan: "KECAMATAN MUARA TELANG",
-        desa: "KEPALA DESA MUKTI JAYA",
-        alamatDesa:
-          "Desa Mukti Jaya Jalur 10, Kecamatan Muara Telang, Kabupaten Banyuasin",
-        tanggalCetak: formattedDate,
-        jabatanPenandatangan: penandatangan?.jabatan || "KEPALA DESA",
-        namaPenandatangan: penandatangan?.nama || "",
-        ttdDataUri: ttdDataURI || undefined,
-      } as any);
-      pdfBuffer = Buffer.from((dataUri as string).split(",")[1], "base64");
-    }
+
+      // === LETTER-SPECIFIC FIELDS ===
+
+      // SKD - Surat Keterangan Domisili
+      tempatLahir: pengajuan.tempatLahir || "",
+      tanggalLahir: pengajuan.tanggalLahir || "",
+      alamatAsal: pengajuan.alamatAsal || "",
+
+      // SKU - Surat Keterangan Usaha
+      namaUsaha: pengajuan.namaUsaha || "",
+      jenisUsaha: pengajuan.jenisUsaha || "",
+      alamatUsaha: pengajuan.alamatUsaha || "",
+
+      // SKK - Surat Keterangan Kematian
+      namaAlmarhum: pengajuan.namaAlmarhum || "",
+      nikAlmarhum: pengajuan.nikAlmarhum || "",
+      tempatLahirAlmarhum: pengajuan.tempatLahirAlmarhum || "",
+      tanggalLahirAlmarhum: pengajuan.tanggalLahirAlmarhum || "",
+      tanggalMeninggal: pengajuan.tanggalMeninggal || "",
+      alamatTerakhir: pengajuan.alamatTerakhir || "",
+      namaPelapor: pengajuan.namaPelapor || "",
+      hubunganPelapor: pengajuan.hubunganPelapor || "",
+
+      // SKL - Surat Keterangan Kelahiran
+      namaBayi: pengajuan.namaBayi || "",
+      tempatLahirBayi: pengajuan.tempatLahirBayi || "",
+      tanggalLahirBayi: pengajuan.tanggalLahirBayi || "",
+      jenisKelaminBayi: pengajuan.jenisKelaminBayi || "",
+      namaAyah: pengajuan.namaAyah || "",
+      namaIbu: pengajuan.namaIbu || "",
+      alamatOrangTua: pengajuan.alamatOrangTua || "",
+
+      // SKPD - Surat Keterangan Pindah Domisili
+      alamatTujuan: pengajuan.alamatTujuan || "",
+      asalDaerah: pengajuan.asalDaerah || "",
+      alasanPindah: pengajuan.alasanPindah || "",
+
+      // SKKT - Surat Keterangan Kepemilikan Tanah
+      alamatTanah: pengajuan.alamatTanah || "",
+      luasTanah: pengajuan.luasTanah || "",
+      statusKepemilikan: pengajuan.statusKepemilikan || "",
+
+      // SKAW - Surat Keterangan Ahli Waris
+      namaPewaris: pengajuan.namaPewaris || "",
+      namaAhliWaris: pengajuan.namaAhliWaris || "",
+      hubunganAhliWaris: pengajuan.hubunganAhliWaris || "",
+    };
+
+    const doc = React.createElement(LetterComp as any, letterProps);
+    const pdfBuffer: Buffer = await renderToBuffer(doc as any);
     (pengajuan as any).__autoNomor = autoNomor;
 
     // Generate filename

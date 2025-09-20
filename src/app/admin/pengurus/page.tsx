@@ -185,7 +185,7 @@ export default function AdminPengurusPage() {
 
     try {
       setUploading(true);
-      const imageUrl = await uploadImage(selectedFile);
+      const imageUrl = await uploadImage(selectedFile, "pengurus");
       return imageUrl;
     } catch (error) {
       toast.error("Gagal mengupload foto");
@@ -211,13 +211,15 @@ export default function AdminPengurusPage() {
     }
 
     setSelectedTTDFile(file);
+    const previewUrl = URL.createObjectURL(file);
+    setValue("ttdDigital", previewUrl);
   }
 
   async function uploadSelectedTTDFile() {
     if (!selectedTTDFile) return null;
     try {
       setUploadingTTD(true);
-      const url = await uploadImage(selectedTTDFile);
+      const url = await uploadImage(selectedTTDFile, "ttd"); // Add category for better organization
       return url;
     } catch (error) {
       toast.error("Gagal mengupload tanda tangan digital");
@@ -259,11 +261,12 @@ export default function AdminPengurusPage() {
 
       let finalTTDUrl = values.ttdDigital;
       if (selectedTTDFile) {
-        finalTTDUrl = await uploadSelectedTTDFile();
-        if (!finalTTDUrl) {
+        const uploadResult = await uploadSelectedTTDFile();
+        if (!uploadResult) {
           toast.error("Gagal mengupload tanda tangan digital");
           return;
         }
+        finalTTDUrl = uploadResult;
       }
 
       const pengurusData = {
@@ -280,12 +283,18 @@ export default function AdminPengurusPage() {
         toast.success("Data pengurus berhasil ditambahkan!");
       }
 
+      // Clean up preview URLs
       if (selectedFile && values.foto?.startsWith("blob:")) {
         URL.revokeObjectURL(values.foto);
       }
 
+      if (selectedTTDFile && values.ttdDigital?.startsWith("blob:")) {
+        URL.revokeObjectURL(values.ttdDigital);
+      }
+
       setOpen(false);
       setSelectedFile(null);
+      setSelectedTTDFile(null);
     } catch (error) {
       toast.error("Gagal menyimpan data pengurus");
       console.error(error);

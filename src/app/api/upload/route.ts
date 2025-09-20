@@ -10,7 +10,7 @@ export const config = {
 
 // Create Supabase client with service role key for server-side operations
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!; // Using anon key for now
+const supabaseServiceKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!; // Use service key if available
 const STORAGE_BUCKET = "muktijaya";
 
 if (!supabaseUrl || !supabaseServiceKey) {
@@ -28,7 +28,10 @@ export async function POST(request: NextRequest) {
     );
     console.log(
       "Supabase Key exists:",
-      !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      !!(
+        process.env.SUPABASE_SERVICE_ROLE_KEY ||
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      )
     );
     console.log("Storage bucket:", STORAGE_BUCKET);
     const formData = await request.formData();

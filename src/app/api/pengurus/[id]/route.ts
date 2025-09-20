@@ -44,6 +44,7 @@ export async function PUT(
     nama: body.nama,
     jabatan: body.jabatan,
     foto: body.foto || "",
+    ttdDigital: body.ttdDigital || "", // Add this line to include the signature field
     kontak: Array.isArray(body.kontak) ? body.kontak : [],
     deskripsi: body.deskripsi || "",
   };
